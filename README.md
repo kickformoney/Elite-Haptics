@@ -50,7 +50,7 @@ Install 64-bit Python 3.12, open PowerShell in the project directory, and run:
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe elite_transducers_ui.py
+.\.venv\Scripts\python.exe elite_haptics_ui.py
 ```
 
 ## Building the Windows executable
@@ -68,7 +68,7 @@ To build manually:
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
-.\.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm elite-transducers-ui.spec
+.\.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm elite-haptics-ui.spec
 ```
 
 PyInstaller is not a cross-compiler. Build the Windows executable on Windows.

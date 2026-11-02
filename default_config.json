@@ -4,7 +4,7 @@
     "master_volume": 0.25,
     "output_device": "Voicemeeter Input",
     "journal_directory": "%USERPROFILE%\\Saved Games\\Frontier Developments\\Elite Dangerous",
-    "theme": "navigation_blue",
+    "theme": "dark_blue",
     "window_geometry": "940x780"
   },
   "bindings": [

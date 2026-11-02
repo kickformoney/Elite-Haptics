@@ -6,7 +6,7 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 ".venv\Scripts\python.exe" -m pip install -r requirements-build.txt || exit /b 1
-".venv\Scripts\python.exe" -m PyInstaller --clean --noconfirm elite-transducers-ui.spec || exit /b 1
+".venv\Scripts\python.exe" -m PyInstaller --clean --noconfirm elite-haptics-ui.spec || exit /b 1
 
 copy /Y "effects.json" "dist\effects.json" >nul
 copy /Y "triggers.json" "dist\triggers.json" >nul

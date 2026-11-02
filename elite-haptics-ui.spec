@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 a = Analysis(
-    ['elite_transducers_ui.py'],
+    ['elite_haptics_ui.py'],
     pathex=[],
     binaries=[],
     datas=[('elite_haptics_engine.py', '.'), ('effects.json', '.'), ('triggers.json', '.'),

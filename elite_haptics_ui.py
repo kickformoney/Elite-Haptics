@@ -37,7 +37,7 @@ enable_crisp_windows_scaling()
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ENGINE_PATH = os.path.join(HERE, "elite_haptics_engine.py")
-spec = importlib.util.spec_from_file_location("elite_transducers_engine", ENGINE_PATH)
+spec = importlib.util.spec_from_file_location("elite_haptics_engine", ENGINE_PATH)
 engine = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
 spec.loader.exec_module(engine)
@@ -421,8 +421,10 @@ class App(tk.Tk):
         ttk.Label(parent, text=engine.EFFECTS_CONFIG_PATH, style="Muted.TLabel",
                   wraplength=720).grid(row=12, column=0, columnspan=2,
                                        sticky="w", pady=(8, 0))
+        ttk.Label(parent, text="Trigger catalog").grid(
+            row=13, column=0, sticky="w", pady=(18, 0))
         trigger_actions = ttk.Frame(parent)
-        trigger_actions.grid(row=13, column=0, columnspan=2, sticky="w", pady=(12, 0))
+        trigger_actions.grid(row=14, column=0, columnspan=2, sticky="w", pady=(6, 0))
         ttk.Button(trigger_actions, text="Open triggers.json",
                    command=self.open_triggers_file).pack(side="left")
         ttk.Button(trigger_actions, text="Reload triggers",
@@ -430,7 +432,7 @@ class App(tk.Tk):
         ttk.Button(trigger_actions, text="Trigger guide",
                    command=self.open_triggers_guide).pack(side="left", padx=(8, 0))
         ttk.Label(parent, text=engine.TRIGGERS_CONFIG_PATH, style="Muted.TLabel",
-                  wraplength=720).grid(row=14, column=0, columnspan=2,
+                  wraplength=720).grid(row=15, column=0, columnspan=2,
                                        sticky="w", pady=(8, 0))
         parent.columnconfigure(0, weight=1)
 
