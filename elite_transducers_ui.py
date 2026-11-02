@@ -45,6 +45,22 @@ spec.loader.exec_module(engine)
 EFFECTS_GUIDE_PATH = os.path.join(HERE, "EFFECTS_GUIDE.md")
 TRIGGERS_GUIDE_PATH = os.path.join(HERE, "TRIGGERS_GUIDE.md")
 
+THEME_OPTIONS = {
+    "dark_blue": "Dark Blue",
+    "light": "Light Blue",
+    "elite_amber": "Elite",
+}
+THEME_IDS_BY_LABEL = {label: theme_id for theme_id, label in THEME_OPTIONS.items()}
+
+
+def normalize_theme_id(value):
+    """Translate legacy dark/light settings and display labels to theme IDs."""
+    if value == "dark":
+        return "dark_blue"
+    if value in THEME_OPTIONS:
+        return value
+    return THEME_IDS_BY_LABEL.get(value, "dark_blue")
+
 # In a one-file PyInstaller build the bundled engine is extracted to a
 # temporary directory. Keep user-editable files beside the executable instead
 # so they remain visible and survive application restarts.
@@ -174,7 +190,8 @@ class App(tk.Tk):
         self.category_filter_var = tk.StringVar(value="All categories")
         self.device_var = tk.StringVar(value=engine.OUTPUT_DEVICE_NAME)
         self.journal_var = tk.StringVar(value=engine.JOURNAL_DIR)
-        self.dark_mode_var = tk.BooleanVar(value=engine.COLOR_THEME == "dark")
+        initial_theme = normalize_theme_id(engine.COLOR_THEME)
+        self.theme_var = tk.StringVar(value=THEME_OPTIONS[initial_theme])
         self.sort_column = "category"
         self.sort_reverse = False
         self.loading_pads = False
@@ -203,8 +220,18 @@ class App(tk.Tk):
         self.after(200, self.poll_monitor_events)
 
     def _build(self):
+        header = ttk.Frame(self, style="Titlebar.TFrame", padding=(12, 0))
+        header.pack(fill="x", padx=18, pady=(14, 0))
+        ttk.Label(
+            header, text="◈  ELITE  /  HAPTICS", style="Title.TLabel"
+        ).pack(side="left", pady=10)
+        self.status_label = ttk.Label(
+            header, textvariable=self.status_text, style="HeaderStatus.TLabel"
+        )
+        self.status_label.pack(side="right", pady=10)
+
         self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill="both", expand=True, padx=14, pady=14)
+        self.notebook.pack(fill="both", expand=True, padx=18, pady=(12, 14))
         bindings_tab = ttk.Frame(self.notebook, padding=14)
         self.pads_tab = ttk.Frame(self.notebook, padding=14)
         monitoring_tab = ttk.Frame(self.notebook, padding=14)
@@ -213,9 +240,6 @@ class App(tk.Tk):
         self.notebook.add(self.pads_tab, text="Test Pad")
         self.notebook.add(monitoring_tab, text="Monitoring")
         self.notebook.add(settings_tab, text="Settings")
-        self.status_label = ttk.Label(
-            self.notebook, textvariable=self.status_text, style="Status.TLabel")
-        self.status_label.place(relx=1.0, x=-10, y=4, anchor="ne")
         self._build_bindings(bindings_tab)
         self._build_pads(self.pads_tab)
         self._build_monitoring(monitoring_tab)
@@ -349,8 +373,12 @@ class App(tk.Tk):
             grid.rowconfigure(n, weight=1)
 
     def _build_settings(self, parent):
-        ttk.Checkbutton(parent, text="Dark mode", variable=self.dark_mode_var,
-                        command=self.apply_theme).grid(row=0, column=0, sticky="w", pady=(0, 16))
+        ttk.Label(parent, text="Theme").grid(row=0, column=0, sticky="w", pady=(0, 16))
+        self.theme_combo = ttk.Combobox(
+            parent, textvariable=self.theme_var, values=list(THEME_OPTIONS.values()),
+            state="readonly", width=20)
+        self.theme_combo.grid(row=0, column=1, sticky="e", pady=(0, 16))
+        self.theme_combo.bind("<<ComboboxSelected>>", lambda _: self.apply_theme())
         ttk.Label(parent, text="Master strength").grid(row=1, column=0, sticky="w")
         ttk.Scale(parent, from_=0.0, to=1.0, variable=self.master_var,
                   command=self.change_master).grid(row=2, column=0, sticky="ew", pady=(4, 16))
@@ -582,26 +610,38 @@ class App(tk.Tk):
                 break
 
     def apply_theme(self, save=True):
-        dark = bool(self.dark_mode_var.get())
-        engine.COLOR_THEME = "dark" if dark else "light"
-        palette = ({
-            "background": "#1E2228", "surface": "#282D35", "field": "#20242A",
-            "foreground": "#E8EAF0", "muted": "#A9AFB8", "border": "#454B55",
-            "select": "#3B638E", "accent": "#5794D0", "accent_hover": "#71AAE0",
-            "hover": "#3B638E", "hover_foreground": "#FFFFFF",
-            "trough": "#343A43", "special": "#E47A86",
-        } if dark else {
-            "background": "#F3F3F3", "surface": "#FFFFFF", "field": "#FFFFFF",
-            "foreground": "#202020", "muted": "#666666", "border": "#B8B8B8",
-            "select": "#3478B8", "accent": "#3478B8", "accent_hover": "#4D91CF",
-            "hover": "#E1E4E8", "hover_foreground": "#202020",
-            "trough": "#D4D9DF", "special": "#C85B67",
-        })
+        theme_id = normalize_theme_id(self.theme_var.get())
+        engine.COLOR_THEME = theme_id
+        if theme_id == "dark_blue":
+            palette = {
+                "background": "#101010", "surface": "#102033", "field": "#0D1825",
+                "foreground": "#DFEAF2", "muted": "#8AA7BD", "border": "#263B50",
+                "select": "#162430", "accent": "#72B7F2", "accent_hover": "#93CAFA",
+                "hover": "#18334F", "hover_foreground": "#FFFFFF",
+                "trough": "#182839", "special": "#E47A86",
+            }
+        elif theme_id == "elite_amber":
+            palette = {
+                "background": "#000000", "surface": "#1A0D00", "field": "#0D0700",
+                "foreground": "#FFE3C2", "muted": "#C58A55", "border": "#5A2B00",
+                "select": "#3A1900", "accent": "#FF7100", "accent_hover": "#FF9A3D",
+                "hover": "#3D1E00", "hover_foreground": "#FFFFFF",
+                "trough": "#211000", "special": "#E47A86",
+            }
+        else:
+            palette = {
+                "background": "#F3F5F7", "surface": "#FFFFFF", "field": "#FFFFFF",
+                "foreground": "#20272C", "muted": "#647583", "border": "#C5CED6",
+                "select": "#DCEAF7", "accent": "#3478B8", "accent_hover": "#24679F",
+                "hover": "#E1E7ED", "hover_foreground": "#20272C",
+                "trough": "#D4DCE3", "special": "#C85B67",
+            }
         self.style.theme_use("clam")
         self.configure(background=palette["background"])
         self.style.configure(".", background=palette["background"],
                              foreground=palette["foreground"], bordercolor=palette["border"],
-                             lightcolor=palette["border"], darkcolor=palette["border"])
+                             lightcolor=palette["border"], darkcolor=palette["border"],
+                             font=("Segoe UI", 10))
         for style_name in ("TFrame", "TLabel"):
             self.style.configure(style_name, background=palette["background"],
                                  foreground=palette["foreground"])
@@ -615,25 +655,35 @@ class App(tk.Tk):
                            foreground=[("active", palette["hover_foreground"])],
                            indicatorbackground=[("active", palette["hover"])])
         self.style.configure("TLabelframe", background=palette["background"],
-                             foreground=palette["foreground"])
+                             foreground=palette["muted"], bordercolor=palette["border"],
+                             relief="flat")
         self.style.configure("TLabelframe.Label", background=palette["background"],
-                             foreground=palette["foreground"])
+                             foreground=palette["muted"], font=("Segoe UI Semibold", 9))
+        self.style.configure("Titlebar.TFrame", background=palette["surface"])
+        self.style.configure("Title.TLabel", background=palette["surface"],
+                             foreground=palette["accent"],
+                             font=("Segoe UI Semibold", 11))
+        self.style.configure("HeaderStatus.TLabel", background=palette["surface"],
+                             foreground=palette["muted"], font=("Segoe UI", 9))
         self.style.configure("TNotebook", background=palette["background"], borderwidth=0)
         self.style.configure("TNotebook.Tab", background=palette["surface"],
-                             foreground=palette["foreground"], padding=(10, 4),
-                             borderwidth=1, relief="flat")
+                             foreground=palette["foreground"], padding=(12, 8),
+                             borderwidth=0, relief="flat")
         self.style.map("TNotebook.Tab",
-                       background=[("selected", palette["select"]),
+                       background=[("selected", palette["accent"]),
                                    ("active", palette["hover"])],
-                       foreground=[("selected", "#FFFFFF"),
+                       foreground=[("selected", palette["background"]),
                                    ("active", palette["hover_foreground"])],
-                       padding=[("selected", (10, 4)), ("!selected", (10, 4))],
-                       borderwidth=[("selected", 1), ("!selected", 1)],
+                       padding=[("selected", (12, 8)), ("!selected", (12, 8))],
+                       borderwidth=[("selected", 0), ("!selected", 0)],
                        relief=[("selected", "flat"), ("!selected", "flat")])
         self.style.configure("TButton", background=palette["surface"],
-                             foreground=palette["foreground"], padding=(8, 5))
-        self.style.map("TButton", background=[("active", palette["hover"])],
-                       foreground=[("active", palette["hover_foreground"])])
+                             foreground=palette["foreground"], padding=(12, 7),
+                             borderwidth=0, relief="flat")
+        self.style.map("TButton", background=[("pressed", palette["select"]),
+                                               ("active", palette["hover"])],
+                       foreground=[("pressed", palette["accent"]),
+                                   ("active", palette["hover_foreground"])])
         self.style.configure("TScale", background=palette["background"],
                              troughcolor=palette["trough"],
                              bordercolor=palette["border"],
@@ -666,16 +716,18 @@ class App(tk.Tk):
                            arrowcolor=[("active", palette["hover_foreground"])])
         self.style.configure("Treeview", background=palette["field"],
                              fieldbackground=palette["field"], foreground=palette["foreground"],
-                             rowheight=24)
+                             rowheight=29, borderwidth=0, relief="flat")
         self.style.configure("Treeview.Heading", background=palette["surface"],
-                             foreground=palette["foreground"])
+                             foreground=palette["muted"], padding=(8, 7),
+                             borderwidth=0, relief="flat",
+                             font=("Segoe UI Semibold", 9))
         self.style.map("Treeview.Heading",
                        background=[("pressed", palette["hover"]),
                                    ("active", palette["hover"])],
                        foreground=[("pressed", palette["hover_foreground"]),
                                    ("active", palette["hover_foreground"])])
         self.style.map("Treeview", background=[("selected", palette["select"])],
-                       foreground=[("selected", "#FFFFFF")])
+                       foreground=[("selected", palette["accent"])])
         self.style.configure("Muted.TLabel", background=palette["background"],
                              foreground=palette["muted"])
         self.style.configure("Special.TLabel", background=palette["background"],
@@ -730,7 +782,7 @@ class App(tk.Tk):
         engine.MASTER_VOLUME = float(settings.get("master_volume", 0.25))
         engine.OUTPUT_DEVICE_NAME = settings.get("output_device", "Voicemeeter Input")
         engine.JOURNAL_DIR = os.path.expandvars(settings.get("journal_directory", engine.JOURNAL_DIR))
-        engine.COLOR_THEME = settings.get("theme", "dark")
+        engine.COLOR_THEME = settings.get("theme", "dark_blue")
         engine.WINDOW_GEOMETRY = settings.get("window_geometry", "940x780")
         engine.CUSTOM_BINDINGS = list(defaults.get("custom_bindings", []))
         engine.BUILTIN_OVERRIDES = {}
@@ -739,7 +791,8 @@ class App(tk.Tk):
         self.master_label.configure(text=f"{engine.MASTER_VOLUME:.0%}")
         self.device_var.set(engine.OUTPUT_DEVICE_NAME)
         self.journal_var.set(engine.JOURNAL_DIR)
-        self.dark_mode_var.set(engine.COLOR_THEME == "dark")
+        theme_id = normalize_theme_id(engine.COLOR_THEME)
+        self.theme_var.set(THEME_OPTIONS[theme_id])
         self.apply_theme(save=False)
         self.geometry(engine.WINDOW_GEOMETRY)
         self.mode_combo.configure(values=sorted(engine.TEST_PAD_MODES))

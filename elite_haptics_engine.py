@@ -19,7 +19,7 @@ SAMPLE_RATE = 44100
 FALLBACK_SETTINGS = {
     "master_volume": 0.25,
     "output_device": "Voicemeeter Input",
-    "theme": "dark",
+    "theme": "dark_blue",
     "window_geometry": "940x780",
 }
 
