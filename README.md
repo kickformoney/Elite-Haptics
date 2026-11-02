@@ -73,6 +73,24 @@ py -3.12 -m venv .venv
 
 PyInstaller is not a cross-compiler. Build the Windows executable on Windows.
 
+## Creating a release
+
+The release script builds the application, verifies and packages the distributable files, and can publish the result through the GitHub CLI. Install and authenticate the CLI once with `gh auth login` before publishing.
+
+To build a ZIP locally without changing anything on GitHub:
+
+```powershell
+.\release.ps1 0.1.0 -PackageOnly
+```
+
+To publish a preview release:
+
+```powershell
+.\release.ps1 0.1.0 -Prerelease
+```
+
+For a normal release, omit `-Prerelease`. By default, GitHub generates release notes from the repository history. Supply edited notes with `-NotesFile .\release-notes.md`. The script asks for confirmation immediately before pushing and publishing; `-Yes` skips that question for unattended use.
+
 ## Editing and adding effects
 
 The working effect catalog is `effects.json`. In the application, use **Settings > Open effects.json**, save changes, then choose **Reload effects**. New selectable effects become available in the Test Pad and mapping controls.
