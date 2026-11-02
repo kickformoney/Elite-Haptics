@@ -1,0 +1,1528 @@
+{
+  "schema_version": 2,
+  "effects": {
+    "boost": {
+      "name": "Boost",
+      "category": "Travel",
+      "description": "A quick rising surge for engine boost.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 40,
+          "end_frequency": 80,
+          "duration": 0.4,
+          "volume": 0.8
+        }
+      ]
+    },
+    "hit_hull": {
+      "name": "Hull Hit",
+      "category": "Combat",
+      "description": "A low, solid impact suitable for direct hull contact.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": {
+            "integer": [
+              30,
+              35
+            ]
+          },
+          "duration": {
+            "uniform": [
+              0.2,
+              0.25
+            ]
+          },
+          "volume": 1.0
+        }
+      ]
+    },
+    "hit_shield": {
+      "name": "Shield Hit",
+      "category": "Combat",
+      "description": "A short, higher-frequency impact suitable for shield contact.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": {
+            "integer": [
+              60,
+              70
+            ]
+          },
+          "duration": 0.1,
+          "volume": 0.7
+        }
+      ]
+    },
+    "interdiction": {
+      "name": "Interdiction",
+      "category": "Combat",
+      "description": "Strong sustained turbulence while an interdiction is in progress.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "noise",
+          "duration": 3.5,
+          "volume": 3.0,
+          "lowpass_frequency": 80
+        }
+      ]
+    },
+    "escape_interdiction": {
+      "name": "Interdiction - Escape",
+      "category": "Combat",
+      "description": "A soft, sustained rising energy sweep for breaking free of an interdiction.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 43,
+          "end_frequency": 72,
+          "duration": 2.8,
+          "volume": 0.42
+        }
+      ]
+    },
+    "fuel_scoop_loop": {
+      "name": "Fuel Scoop Loop",
+      "category": "Fuel",
+      "description": "One short segment of the gentle vibration repeated while fuel scooping is active.",
+      "selectable": false,
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "layered",
+          "frequencies": [
+            28,
+            38
+          ],
+          "duration": 0.45,
+          "volume": 0.24
+        }
+      ]
+    },
+    "fuel_scoop_preview": {
+      "name": "Fuel Scoop Preview",
+      "category": "Fuel",
+      "description": "A steady, gentle engine-like vibration for previewing fuel scooping.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "layered",
+          "frequencies": [
+            28,
+            38
+          ],
+          "duration": 1.2,
+          "volume": 0.24
+        }
+      ]
+    },
+    "mass_lock": {
+      "name": "Mass Lock",
+      "category": "Travel",
+      "description": "A one-second rising gravity-pressure sweep for a mass-lock warning.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 27,
+          "end_frequency": 52,
+          "duration": 1.0,
+          "volume": 0.48
+        }
+      ]
+    },
+    "overheat_loop": {
+      "name": "Overheat Loop",
+      "category": "Ship",
+      "description": "One short segment of the stronger warning vibration repeated while the ship is overheating.",
+      "selectable": false,
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "layered",
+          "frequencies": [
+            30,
+            44
+          ],
+          "duration": 0.45,
+          "volume": 0.42
+        }
+      ]
+    },
+    "overheat_preview": {
+      "name": "Overheat Preview",
+      "category": "Ship",
+      "description": "A steady warning vibration stronger than the fuel-scooping effect.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "layered",
+          "frequencies": [
+            30,
+            44
+          ],
+          "duration": 1.2,
+          "volume": 0.42
+        }
+      ]
+    },
+    "srv_launch": {
+      "name": "SRV Launch",
+      "category": "SRV",
+      "description": "A descending mechanical movement followed by a release bump.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 52,
+          "end_frequency": 30,
+          "duration": 1.1,
+          "volume": 0.48
+        },
+        {
+          "type": "sine",
+          "frequency": 32,
+          "duration": 0.22,
+          "volume": 0.7
+        }
+      ]
+    },
+    "srv_dock": {
+      "name": "SRV Dock",
+      "category": "SRV",
+      "description": "A rising mechanical movement followed by a docking bump.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 30,
+          "end_frequency": 55,
+          "duration": 1.0,
+          "volume": 0.42
+        },
+        {
+          "type": "sine",
+          "frequency": 38,
+          "duration": 0.25,
+          "volume": 0.65
+        }
+      ]
+    },
+    "srv_destroyed": {
+      "name": "SRV Destroyed",
+      "category": "SRV",
+      "description": "The powerful low-frequency explosion used at the end of Self-Destruct.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "noise",
+          "duration": 3.5,
+          "volume": 5.0,
+          "lowpass_frequency": 80
+        }
+      ]
+    },
+    "srv_handbrake_on": {
+      "name": "SRV Handbrake On",
+      "category": "SRV",
+      "description": "A short mechanical engagement click.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": 42,
+          "duration": 0.14,
+          "volume": 0.45
+        }
+      ]
+    },
+    "srv_handbrake_off": {
+      "name": "SRV Handbrake Off",
+      "category": "SRV",
+      "description": "A lighter mechanical release click.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": 55,
+          "duration": 0.1,
+          "volume": 0.3
+        }
+      ]
+    },
+    "other_afmurepair": {
+      "name": "AFMU Repair",
+      "category": "Ship",
+      "description": "An irregular sequence of machinery pulses for AFMU repair activity.",
+      "generator": "sequence",
+      "variables": {
+        "low": {
+          "integer": [
+            30,
+            45
+          ]
+        },
+        "mid": {
+          "integer": [
+            50,
+            70
+          ]
+        },
+        "pulses": {
+          "integer": [
+            2,
+            5
+          ]
+        },
+        "long": {
+          "integer": [
+            2,
+            6
+          ]
+        },
+        "pulse_duration": {
+          "triangular": [
+            0,
+            1,
+            0.3
+          ]
+        },
+        "gap": {
+          "triangular": [
+            0,
+            1,
+            0.6
+          ]
+        }
+      },
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": "$mid",
+          "duration": 1,
+          "volume": 0.3
+        },
+        {
+          "type": "wait",
+          "duration": 2
+        },
+        {
+          "type": "random_pulse",
+          "frequency": "$low",
+          "count": "$pulses",
+          "pulse_duration": "$pulse_duration",
+          "gap_duration": "$gap",
+          "volume": 0.4
+        },
+        {
+          "type": "wait",
+          "duration": 4
+        },
+        {
+          "type": "sine",
+          "frequency": "$low",
+          "duration": "$long",
+          "volume": 0.3
+        },
+        {
+          "type": "wait",
+          "duration": 4
+        },
+        {
+          "type": "random_pulse",
+          "frequency": "$mid",
+          "count": "$pulses",
+          "pulse_duration": "$pulse_duration",
+          "gap_duration": "$gap",
+          "volume": 0.5
+        }
+      ]
+    },
+    "other_cockpitbreach": {
+      "name": "Cockpit Breach",
+      "category": "Ship",
+      "description": "A long falling pressure-release sweep.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 85,
+          "end_frequency": 0,
+          "duration": 4.0,
+          "volume": 1.2
+        }
+      ]
+    },
+    "other_selfdestruct": {
+      "name": "Self-Destruct",
+      "category": "Ship",
+      "description": "A rising warning followed by a powerful low-frequency blast.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 25,
+          "end_frequency": 40,
+          "duration": 5.0,
+          "volume": 1.0
+        },
+        {
+          "type": "wait",
+          "duration": 4.9
+        },
+        {
+          "type": "noise",
+          "duration": 3.5,
+          "volume": 5.0,
+          "lowpass_frequency": 80
+        }
+      ]
+    },
+    "other_systemsshutdown": {
+      "name": "Systems Shutdown",
+      "category": "Ship",
+      "description": "A long descending power-down sweep.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 50,
+          "end_frequency": 0,
+          "duration": 5.0,
+          "volume": 0.6
+        }
+      ]
+    },
+    "other_systemsstartup": {
+      "name": "Systems Startup",
+      "category": "Ship",
+      "description": "A staged power-up sequence ending in a rising systems-online sweep.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": 28,
+          "duration": 0.22,
+          "volume": 0.35
+        },
+        {
+          "type": "wait",
+          "duration": 0.3
+        },
+        {
+          "type": "sine",
+          "frequency": 36,
+          "duration": 0.28,
+          "volume": 0.42
+        },
+        {
+          "type": "wait",
+          "duration": 0.34
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 32,
+          "end_frequency": 68,
+          "duration": 2.8,
+          "volume": 0.62
+        },
+        {
+          "type": "wait",
+          "duration": 2.55
+        },
+        {
+          "type": "layered",
+          "frequencies": [
+            45,
+            62
+          ],
+          "duration": 0.32,
+          "volume": 0.58
+        }
+      ]
+    },
+    "station_repair_all": {
+      "name": "Repair All",
+      "category": "Station",
+      "description": "A long, varied machinery sequence for repairing the entire ship.",
+      "generator": "sequence",
+      "variables": {
+        "low": {
+          "integer": [
+            30,
+            45
+          ]
+        },
+        "mid": {
+          "integer": [
+            50,
+            70
+          ]
+        },
+        "pulses": {
+          "integer": [
+            2,
+            5
+          ]
+        },
+        "long": {
+          "integer": [
+            2,
+            6
+          ]
+        },
+        "pulse_duration": {
+          "triangular": [
+            0,
+            1,
+            0.3
+          ]
+        },
+        "gap": {
+          "triangular": [
+            0,
+            1,
+            0.6
+          ]
+        }
+      },
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": "$mid",
+          "duration": 1,
+          "volume": 0.4
+        },
+        {
+          "type": "wait",
+          "duration": 2
+        },
+        {
+          "type": "random_pulse",
+          "frequency": "$low",
+          "count": "$pulses",
+          "pulse_duration": "$pulse_duration",
+          "gap_duration": "$gap",
+          "volume": 0.48
+        },
+        {
+          "type": "wait",
+          "duration": 4
+        },
+        {
+          "type": "sine",
+          "frequency": "$low",
+          "duration": "$long",
+          "volume": 0.48
+        },
+        {
+          "type": "wait",
+          "duration": 5
+        },
+        {
+          "type": "sine",
+          "frequency": "$mid",
+          "duration": 0.25,
+          "volume": 0.24
+        },
+        {
+          "type": "wait",
+          "duration": 3
+        },
+        {
+          "type": "random_pulse",
+          "frequency": "$mid",
+          "count": "$pulses",
+          "pulse_duration": 0.2,
+          "gap_duration": "$gap",
+          "volume": 0.64
+        },
+        {
+          "type": "wait",
+          "duration": 4
+        },
+        {
+          "type": "sine",
+          "frequency": "$low",
+          "duration": "$long",
+          "volume": 0.32
+        },
+        {
+          "type": "wait",
+          "duration": 4
+        },
+        {
+          "type": "random_pulse",
+          "frequency": "$mid",
+          "count": "$pulses",
+          "pulse_duration": "$pulse_duration",
+          "gap_duration": "$gap",
+          "volume": 0.64
+        }
+      ]
+    },
+    "station_repair_selected": {
+      "name": "Repair Selected",
+      "category": "Station",
+      "description": "A shorter machinery sequence for repairing selected modules.",
+      "generator": "sequence",
+      "variables": {
+        "low": {
+          "integer": [
+            30,
+            45
+          ]
+        },
+        "mid": {
+          "integer": [
+            50,
+            70
+          ]
+        },
+        "pulses": {
+          "integer": [
+            2,
+            5
+          ]
+        },
+        "pulse_duration": {
+          "triangular": [
+            0,
+            1,
+            0.3
+          ]
+        },
+        "gap": {
+          "triangular": [
+            0,
+            1,
+            0.6
+          ]
+        }
+      },
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": "$mid",
+          "duration": 1,
+          "volume": 0.4
+        },
+        {
+          "type": "wait",
+          "duration": 2
+        },
+        {
+          "type": "random_pulse",
+          "frequency": "$low",
+          "count": "$pulses",
+          "pulse_duration": "$pulse_duration",
+          "gap_duration": "$gap",
+          "volume": 0.6
+        },
+        {
+          "type": "wait",
+          "duration": 4
+        },
+        {
+          "type": "sine",
+          "frequency": "$mid",
+          "duration": 0.25,
+          "volume": 0.3
+        },
+        {
+          "type": "wait",
+          "duration": 3
+        },
+        {
+          "type": "random_pulse",
+          "frequency": "$mid",
+          "count": "$pulses",
+          "pulse_duration": 0.2,
+          "gap_duration": "$gap",
+          "volume": 0.8
+        }
+      ]
+    },
+    "station_refuel": {
+      "name": "Refuel",
+      "category": "Station",
+      "description": "A sustained low refueling hum with start and completion cues.",
+      "generator": "sequence",
+      "variables": {
+        "long": {
+          "integer": [
+            10,
+            14
+          ]
+        }
+      },
+      "steps": [
+        {
+          "type": "random_pulse",
+          "frequency": 40,
+          "count": 1,
+          "pulse_duration": 0.2,
+          "gap_duration": 2.0,
+          "volume": 0.4
+        },
+        {
+          "type": "wait",
+          "duration": 2
+        },
+        {
+          "type": "sine",
+          "frequency": 60,
+          "duration": "$long",
+          "volume": 0.2
+        },
+        {
+          "type": "wait",
+          "duration": "$long"
+        },
+        {
+          "type": "wait",
+          "duration": 3
+        },
+        {
+          "type": "sine",
+          "frequency": 40,
+          "duration": 0.1,
+          "volume": 0.4
+        },
+        {
+          "type": "wait",
+          "duration": 0.75
+        },
+        {
+          "type": "sine",
+          "frequency": 60,
+          "duration": 0.2,
+          "volume": 0.4
+        }
+      ]
+    },
+    "station_refuel_partial": {
+      "name": "Refuel 10%",
+      "category": "Station",
+      "description": "A shorter refueling hum for the 10% Advanced Maintenance option.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": 40,
+          "duration": 0.16,
+          "volume": 0.36
+        },
+        {
+          "type": "wait",
+          "duration": 0.4
+        },
+        {
+          "type": "sine",
+          "frequency": 60,
+          "duration": 3.2,
+          "volume": 0.2
+        },
+        {
+          "type": "wait",
+          "duration": 3.0
+        },
+        {
+          "type": "sine",
+          "frequency": 60,
+          "duration": 0.16,
+          "volume": 0.38
+        }
+      ]
+    },
+    "station_restock_ammo": {
+      "name": "Restock Ammunition",
+      "category": "Station",
+      "description": "An eight-second sequence of service ports, container removal, cartridge loading, and securing latches.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 46,
+          "end_frequency": 32,
+          "duration": 0.85,
+          "volume": 0.3
+        },
+        {
+          "type": "wait",
+          "duration": 1.1
+        },
+        {
+          "type": "random_pulse",
+          "frequency": 43,
+          "count": 3,
+          "pulse_duration": 0.1,
+          "gap_duration": 0.08,
+          "volume": 0.48,
+          "frequency_variance": 0.1
+        },
+        {
+          "type": "wait",
+          "duration": 1.1
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 52,
+          "end_frequency": 29,
+          "duration": 0.55,
+          "volume": 0.42
+        },
+        {
+          "type": "wait",
+          "duration": 1.0
+        },
+        {
+          "type": "sine",
+          "frequency": 31,
+          "duration": 0.3,
+          "volume": 0.62
+        },
+        {
+          "type": "wait",
+          "duration": 1.0
+        },
+        {
+          "type": "random_pulse",
+          "frequency": 50,
+          "count": 5,
+          "pulse_duration": 0.12,
+          "gap_duration": 0.1,
+          "volume": 0.44,
+          "frequency_variance": 0.12,
+          "duration_variance": 0.12
+        },
+        {
+          "type": "wait",
+          "duration": 1.4
+        },
+        {
+          "type": "sine",
+          "frequency": 35,
+          "duration": 0.25,
+          "volume": 0.58
+        },
+        {
+          "type": "wait",
+          "duration": 0.8
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 31,
+          "end_frequency": 47,
+          "duration": 0.85,
+          "volume": 0.3
+        },
+        {
+          "type": "wait",
+          "duration": 1.0
+        },
+        {
+          "type": "sine",
+          "frequency": 39,
+          "duration": 0.22,
+          "volume": 0.7
+        }
+      ]
+    },
+    "station_restockvehicle": {
+      "name": "Restock Vehicle",
+      "category": "Station",
+      "description": "A longer vehicle-loading sequence with bay movement, lift machinery, seating contacts, and a final latch.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 48,
+          "end_frequency": 31,
+          "duration": 0.8,
+          "volume": 0.34
+        },
+        {
+          "type": "wait",
+          "duration": 1.1
+        },
+        {
+          "type": "layered",
+          "frequencies": [
+            29,
+            41
+          ],
+          "duration": 0.35,
+          "volume": 0.64
+        },
+        {
+          "type": "wait",
+          "duration": 0.8
+        },
+        {
+          "type": "layered",
+          "frequencies": [
+            30,
+            38
+          ],
+          "duration": 2.4,
+          "volume": 0.38
+        },
+        {
+          "type": "wait",
+          "duration": 2.5
+        },
+        {
+          "type": "random_pulse",
+          "frequency": 42,
+          "count": 3,
+          "pulse_duration": 0.12,
+          "gap_duration": 0.1,
+          "volume": 0.54,
+          "frequency_variance": 0.08
+        },
+        {
+          "type": "wait",
+          "duration": 1.1
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 31,
+          "end_frequency": 49,
+          "duration": 0.8,
+          "volume": 0.34
+        },
+        {
+          "type": "wait",
+          "duration": 1.0
+        },
+        {
+          "type": "sine",
+          "frequency": 37,
+          "duration": 0.25,
+          "volume": 0.74
+        }
+      ]
+    },
+    "trade_ejectcargo": {
+      "name": "Eject Cargo",
+      "category": "Ship",
+      "description": "A sequence of release, movement, and latch vibrations for cargo ejection.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 65,
+          "end_frequency": 0,
+          "duration": 0.25,
+          "volume": 0.7
+        },
+        {
+          "type": "wait",
+          "duration": 0.25
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 80,
+          "end_frequency": 0,
+          "duration": 2.5,
+          "volume": 0.5
+        },
+        {
+          "type": "wait",
+          "duration": 2
+        },
+        {
+          "type": "sine",
+          "frequency": 55,
+          "duration": 0.7,
+          "volume": 0.3
+        },
+        {
+          "type": "wait",
+          "duration": 1
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 65,
+          "end_frequency": 0,
+          "duration": 0.2,
+          "volume": 0.7
+        }
+      ]
+    },
+    "travel_approachbody": {
+      "name": "Approach Body",
+      "category": "Travel",
+      "description": "A firm entry cue followed by a rising orbital-approach sweep.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "layered",
+          "frequencies": [
+            30,
+            42
+          ],
+          "duration": 0.24,
+          "volume": 0.62
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 28,
+          "end_frequency": 43,
+          "duration": 1.25,
+          "volume": 0.48
+        }
+      ]
+    },
+    "travel_docked": {
+      "name": "Docked",
+      "category": "Travel",
+      "description": "A longer soft clamp vibration, a slight pause, then a solid engagement clunk.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "layered",
+          "frequencies": [
+            31,
+            39
+          ],
+          "duration": 1.65,
+          "volume": 0.3
+        },
+        {
+          "type": "wait",
+          "duration": 1.85
+        },
+        {
+          "type": "layered",
+          "frequencies": [
+            27,
+            43
+          ],
+          "duration": 0.24,
+          "volume": 0.72
+        }
+      ]
+    },
+    "travel_fsdjump": {
+      "name": "FSD Jump",
+      "category": "Travel",
+      "description": "A deep layered rumble for completing an FSD jump.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "layered",
+          "frequencies": [
+            20,
+            50,
+            75
+          ],
+          "duration": 3.0,
+          "volume": 1.0
+        }
+      ]
+    },
+    "travel_liftoff": {
+      "name": "Liftoff",
+      "category": "Travel",
+      "description": "A short low-frequency release bump for liftoff.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": {
+            "integer": [
+              32,
+              35
+            ]
+          },
+          "duration": 0.3,
+          "volume": 0.6
+        }
+      ]
+    },
+    "travel_fsdengage": {
+      "name": "FSD Engage",
+      "category": "Travel",
+      "description": "A long rising charge followed by the FSD engagement bump.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 40,
+          "end_frequency": 77,
+          "duration": 4.0,
+          "volume": 0.5
+        },
+        {
+          "type": "wait",
+          "duration": 4.2
+        },
+        {
+          "type": "sine",
+          "frequency": 30,
+          "duration": 0.35,
+          "volume": 0.7
+        }
+      ]
+    },
+    "travel_touchdown": {
+      "name": "Touchdown",
+      "category": "Travel",
+      "description": "A compact layered thump for touchdown.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "layered",
+          "frequencies": [
+            28,
+            42
+          ],
+          "duration": 0.5,
+          "volume": 0.75
+        }
+      ]
+    },
+    "travel_undocked": {
+      "name": "Undocked",
+      "category": "Travel",
+      "description": "A single solid clunk as the docking clamps release.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "layered",
+          "frequencies": [
+            29,
+            45
+          ],
+          "duration": 0.24,
+          "volume": 0.68
+        }
+      ]
+    },
+    "status_hardpointsdeployed": {
+      "name": "Hardpoints Deployed",
+      "category": "Ship",
+      "description": "A two-stage mechanical extension effect.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": 60,
+          "duration": 0.5,
+          "volume": 0.3
+        },
+        {
+          "type": "wait",
+          "duration": 0.5
+        },
+        {
+          "type": "sine",
+          "frequency": 50,
+          "duration": 1.8,
+          "volume": 0.55
+        }
+      ]
+    },
+    "status_hardpointsretracted": {
+      "name": "Hardpoints Retracted",
+      "category": "Ship",
+      "description": "A long retraction movement followed by a latch click.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": 50,
+          "duration": 2.0,
+          "volume": 0.3
+        },
+        {
+          "type": "wait",
+          "duration": 1.8
+        },
+        {
+          "type": "sine",
+          "frequency": 55,
+          "duration": 0.15,
+          "volume": 0.7
+        }
+      ]
+    },
+    "status_landinggeardeployed": {
+      "name": "Landing Gear Deployed",
+      "category": "Ship",
+      "description": "A multi-stage mechanism sequence for lowering landing gear.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": 30,
+          "duration": 0.2,
+          "volume": 0.5625
+        },
+        {
+          "type": "wait",
+          "duration": 1
+        },
+        {
+          "type": "sine",
+          "frequency": 50,
+          "duration": 0.4,
+          "volume": 0.25
+        },
+        {
+          "type": "wait",
+          "duration": 1
+        },
+        {
+          "type": "sine",
+          "frequency": 55,
+          "duration": 1.0,
+          "volume": 0.25
+        },
+        {
+          "type": "wait",
+          "duration": 1
+        },
+        {
+          "type": "sine",
+          "frequency": 60,
+          "duration": 1.7,
+          "volume": 0.5
+        },
+        {
+          "type": "wait",
+          "duration": 2
+        },
+        {
+          "type": "sine",
+          "frequency": 40,
+          "duration": 0.2,
+          "volume": 0.5625
+        }
+      ]
+    },
+    "status_landinggearretracted": {
+      "name": "Landing Gear Retracted",
+      "category": "Ship",
+      "description": "A multi-stage mechanism sequence for raising landing gear.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sine",
+          "frequency": 30,
+          "duration": 0.2,
+          "volume": 0.5625
+        },
+        {
+          "type": "wait",
+          "duration": 0.5
+        },
+        {
+          "type": "sine",
+          "frequency": 45,
+          "duration": 0.4,
+          "volume": 0.25
+        },
+        {
+          "type": "wait",
+          "duration": 1
+        },
+        {
+          "type": "sine",
+          "frequency": 60,
+          "duration": 0.2,
+          "volume": 0.5
+        },
+        {
+          "type": "wait",
+          "duration": 0.5
+        },
+        {
+          "type": "sine",
+          "frequency": 55,
+          "duration": 1.5,
+          "volume": 0.25
+        },
+        {
+          "type": "wait",
+          "duration": 3.5
+        },
+        {
+          "type": "sine",
+          "frequency": 40,
+          "duration": 0.3,
+          "volume": 0.5625
+        }
+      ]
+    },
+    "status_shieldsdown": {
+      "name": "Shields Down",
+      "category": "Ship",
+      "description": "A brief rough collapse effect when shields fail.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "noise",
+          "duration": 0.35,
+          "volume": 2.0,
+          "lowpass_frequency": 90
+        }
+      ]
+    },
+    "status_shieldsup": {
+      "name": "Shields Up",
+      "category": "Ship",
+      "description": "A rising energy sweep when shields return.",
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "sweep",
+          "start_frequency": 45,
+          "end_frequency": 75,
+          "duration": 2.0,
+          "volume": 0.6
+        }
+      ]
+    },
+    "under_attack_shields": {
+      "name": "Under Attack - Shields",
+      "category": "Combat",
+      "description": "Three quick higher-frequency impacts used when an Under Attack warning arrives with shields online.",
+      "selectable": false,
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "random_pulse",
+          "frequency": 66,
+          "count": 3,
+          "pulse_duration": 0.08,
+          "gap_duration": 0.06,
+          "volume": 0.62,
+          "frequency_variance": 0.12
+        }
+      ]
+    },
+    "under_attack_hull": {
+      "name": "Under Attack - Hull",
+      "category": "Combat",
+      "description": "Three rough lower-frequency impacts used when an Under Attack warning arrives without shields.",
+      "selectable": false,
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "random_pulse",
+          "frequency": 34,
+          "count": 3,
+          "pulse_duration": 0.14,
+          "gap_duration": 0.08,
+          "volume": 0.72,
+          "frequency_variance": 0.2,
+          "duration_variance": 0.25,
+          "volume_variance": 0.2
+        }
+      ]
+    },
+    "hull_threshold_80": {
+      "name": "Hull Threshold 80%",
+      "category": "Ship",
+      "description": "Three light, irregular structural impacts for the first hull-damage threshold.",
+      "selectable": false,
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "random_pulse",
+          "frequency": 48,
+          "count": 3,
+          "pulse_duration": 0.11,
+          "gap_duration": 0.07,
+          "volume": 0.3,
+          "frequency_variance": 0.22,
+          "duration_variance": 0.3,
+          "gap_variance": 0.35,
+          "volume_variance": 0.25
+        }
+      ]
+    },
+    "hull_threshold_60": {
+      "name": "Hull Threshold 60%",
+      "category": "Ship",
+      "description": "Four moderate, irregular structural impacts as hull integrity falls.",
+      "selectable": false,
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "random_pulse",
+          "frequency": 43,
+          "count": 4,
+          "pulse_duration": 0.11,
+          "gap_duration": 0.07,
+          "volume": 0.44,
+          "frequency_variance": 0.22,
+          "duration_variance": 0.3,
+          "gap_variance": 0.35,
+          "volume_variance": 0.25
+        }
+      ]
+    },
+    "hull_threshold_40": {
+      "name": "Hull Threshold 40%",
+      "category": "Ship",
+      "description": "Five stronger, irregular structural impacts at low hull integrity.",
+      "selectable": false,
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "random_pulse",
+          "frequency": 37,
+          "count": 5,
+          "pulse_duration": 0.11,
+          "gap_duration": 0.07,
+          "volume": 0.62,
+          "frequency_variance": 0.22,
+          "duration_variance": 0.3,
+          "gap_variance": 0.35,
+          "volume_variance": 0.25
+        }
+      ]
+    },
+    "hull_threshold_20": {
+      "name": "Hull Threshold 20%",
+      "category": "Ship",
+      "description": "Seven heavy structural impacts and a low rumble at critical hull integrity.",
+      "selectable": false,
+      "generator": "sequence",
+      "steps": [
+        {
+          "type": "random_pulse",
+          "frequency": 31,
+          "count": 7,
+          "pulse_duration": 0.11,
+          "gap_duration": 0.07,
+          "volume": 0.82,
+          "frequency_variance": 0.22,
+          "duration_variance": 0.3,
+          "gap_variance": 0.35,
+          "volume_variance": 0.25
+        },
+        {
+          "type": "noise",
+          "duration": 0.7,
+          "volume": 0.55,
+          "lowpass_frequency": 55
+        }
+      ]
+    },
+    "travel_leave_body_1": {
+      "name": "Leave Body 1",
+      "category": "Travel",
+      "description": "Smooth, light atmospheric boundary rumble.",
+      "generator": "atmospheric_rumble",
+      "duration": 7.5,
+      "fade_in": 1.3,
+      "fade_out_start": 5.0,
+      "volume": 0.48,
+      "components": [
+        {
+          "frequency": 29,
+          "amplitude": 0.62
+        },
+        {
+          "frequency": 37,
+          "amplitude": 0.28,
+          "phase": 0.4
+        }
+      ],
+      "amplitude_modulation": [
+        {
+          "rate": 0.32,
+          "depth": 0.035
+        },
+        {
+          "rate": 0.13,
+          "depth": 0.08
+        }
+      ],
+      "noise": {
+        "amount": 0.09,
+        "smoothing": 1100
+      }
+    },
+    "travel_leave_body_2": {
+      "name": "Leave Body 2",
+      "category": "Travel",
+      "description": "Rolling atmospheric turbulence with uneven pressure.",
+      "generator": "atmospheric_rumble",
+      "duration": 7.5,
+      "fade_in": 1.0,
+      "fade_out_start": 5.0,
+      "volume": 0.48,
+      "components": [
+        {
+          "frequency": 27,
+          "amplitude": 0.56
+        },
+        {
+          "frequency": 35,
+          "amplitude": 0.24,
+          "phase": 0.7
+        }
+      ],
+      "amplitude_modulation": [
+        {
+          "rate": 0.43,
+          "depth": 0.16
+        },
+        {
+          "rate": 0.91,
+          "depth": 0.08,
+          "phase": 1.1
+        }
+      ],
+      "noise": {
+        "amount": 0.18,
+        "smoothing": 720
+      }
+    },
+    "travel_leave_body_3": {
+      "name": "Leave Body 3",
+      "category": "Travel",
+      "description": "Deep, steady spacecraft and hull resonance.",
+      "generator": "atmospheric_rumble",
+      "duration": 7.5,
+      "fade_in": 1.6,
+      "fade_out_start": 5.0,
+      "volume": 0.48,
+      "components": [
+        {
+          "start_frequency": 25,
+          "end_frequency": 30,
+          "amplitude": 0.68
+        },
+        {
+          "frequency": 41,
+          "amplitude": 0.22,
+          "phase": 0.25
+        }
+      ],
+      "amplitude_modulation": [
+        {
+          "rate": 0.2,
+          "depth": 0.06
+        }
+      ],
+      "noise": {
+        "amount": 0.055,
+        "smoothing": 1400
+      }
+    }
+  }
+}
