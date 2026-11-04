@@ -43,6 +43,18 @@ Annotations are presentation metadata. They do not create special playback logic
 }
 ```
 
+Entries use the original `Flags` value by default. For Odyssey/on-foot states and
+other second-field flags, specify the source explicitly:
+
+```json
+{
+  "field": "Flags2",
+  "bit": 6,
+  "on": "onfoot_low_oxygen",
+  "off": "onfoot_oxygen_normal"
+}
+```
+
 Both the `on` and `off` trigger IDs need entries under `triggers`. Only add or change a Status bit after confirming it against the Elite Dangerous Status Flags documentation.
 
 ## Special actions

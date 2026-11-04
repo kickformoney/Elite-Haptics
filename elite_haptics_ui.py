@@ -52,6 +52,13 @@ THEME_OPTIONS = {
 }
 THEME_IDS_BY_LABEL = {label: theme_id for theme_id, label in THEME_OPTIONS.items()}
 
+WINDOW_GLYPHS = {
+    "minimize": "\ue921",
+    "maximize": "\ue922",
+    "restore": "\ue923",
+    "close": "\ue8bb",
+}
+
 
 def normalize_theme_id(value):
     """Translate legacy dark/light settings and display labels to theme IDs."""
@@ -163,6 +170,10 @@ class App(tk.Tk):
         engine.load_config()
         self.runtime = Runtime()
         self.title("Elite Haptics")
+        self.overrideredirect(True)
+        self._window_maximized = False
+        self._restore_geometry = None
+        self._drag_origin = None
         try:
             self.geometry(engine.WINDOW_GEOMETRY)
         except tk.TclError:
@@ -218,33 +229,50 @@ class App(tk.Tk):
         self.bind("<Configure>", self.on_window_configure, add="+")
         self.after(150, self.start_runtime)
         self.after(200, self.poll_monitor_events)
+        self.after(10, self.enable_taskbar_window)
 
     def _build(self):
         header = ttk.Frame(self, style="Titlebar.TFrame", padding=(12, 0))
         header.pack(fill="x", padx=18, pady=(14, 0))
-        ttk.Label(
+        title_label = ttk.Label(
             header, text="◈  ELITE  /  HAPTICS", style="Title.TLabel"
-        ).pack(side="left", pady=10)
+        )
+        title_label.pack(side="left", pady=10)
+        for widget in (header, title_label):
+            widget.bind("<ButtonPress-1>", self.start_window_drag)
+            widget.bind("<B1-Motion>", self.drag_window)
+            widget.bind("<Double-Button-1>", lambda _: self.toggle_maximize())
+
+        ttk.Button(header, text=WINDOW_GLYPHS["close"], style="Chrome.TButton", width=4,
+                   command=self.close).pack(side="right", padx=(3, 0), pady=5)
+        self.maximize_button = ttk.Button(
+            header, text=WINDOW_GLYPHS["maximize"], style="Chrome.TButton", width=4,
+            command=self.toggle_maximize)
+        self.maximize_button.pack(side="right", padx=3, pady=5)
+        ttk.Button(header, text=WINDOW_GLYPHS["minimize"], style="Chrome.TButton", width=4,
+                   command=self.minimize_window).pack(side="right", padx=3, pady=5)
         self.status_label = ttk.Label(
             header, textvariable=self.status_text, style="HeaderStatus.TLabel"
         )
-        self.status_label.pack(side="right", pady=10)
+        self.status_label.pack(side="right", padx=10, pady=10)
 
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=18, pady=(12, 14))
         bindings_tab = ttk.Frame(self.notebook, padding=14)
         self.pads_tab = ttk.Frame(self.notebook, padding=14)
         monitoring_tab = ttk.Frame(self.notebook, padding=14)
-        settings_tab = ttk.Frame(self.notebook, padding=14)
+        self.settings_tab = ttk.Frame(self.notebook, padding=14)
         self.notebook.add(bindings_tab, text="Effects")
         self.notebook.add(self.pads_tab, text="Test Pad")
         self.notebook.add(monitoring_tab, text="Monitoring")
-        self.notebook.add(settings_tab, text="Settings")
+        self.notebook.add(self.settings_tab, text="Settings")
         self._build_bindings(bindings_tab)
         self._build_pads(self.pads_tab)
         self._build_monitoring(monitoring_tab)
-        self._build_settings(settings_tab)
+        self._build_settings(self.settings_tab)
         self.bind_all("<KeyPress>", self.on_app_keypress, add="+")
+        self.size_grip = ttk.Sizegrip(self)
+        self.size_grip.place(relx=1.0, rely=1.0, anchor="se")
 
     def _build_bindings(self, parent):
         ttk.Label(parent, text="Add another effect to a telemetry trigger, or double-click a row to edit it.").grid(
@@ -283,12 +311,14 @@ class App(tk.Tk):
         self.category_combo.pack(side="left")
         self.category_combo.bind("<<ComboboxSelected>>", lambda _: self.refresh_bindings())
 
+        tree_frame = ttk.Frame(parent)
+        tree_frame.grid(row=5, column=0, columnspan=4, sticky="nsew")
         self.binding_tree = ttk.Treeview(
-            parent, columns=("category", "trigger", "effect", "intensity", "source"),
+            tree_frame, columns=("category", "trigger", "effect", "intensity", "enabled", "source"),
             show="headings", height=15, selectmode="extended")
         headings = {
             "category": "Category", "trigger": "Telemetry trigger", "effect": "Effect",
-            "intensity": "Strength", "source": "Source",
+            "intensity": "Strength", "enabled": "Enabled", "source": "Source",
         }
         for column, label in headings.items():
             self.binding_tree.heading(column, text=label,
@@ -297,17 +327,25 @@ class App(tk.Tk):
         self.binding_tree.column("trigger", width=235)
         self.binding_tree.column("effect", width=245)
         self.binding_tree.column("intensity", width=90, anchor="center")
+        self.binding_tree.column("enabled", width=75, anchor="center", stretch=False)
         self.binding_tree.column("source", width=85, anchor="center")
-        self.binding_tree.grid(row=5, column=0, columnspan=4, sticky="nsew")
+        tree_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self.binding_tree.yview)
+        self.binding_tree.configure(yscrollcommand=tree_scroll.set)
+        self.binding_tree.pack(side="left", fill="both", expand=True)
+        tree_scroll.pack(side="right", fill="y")
         self.binding_tree.bind("<Double-1>", lambda _: self.edit_selected())
         self.binding_tree.bind("<Button-3>", self.show_binding_context_menu)
         self.binding_tree.bind("<Shift-F10>", self.show_binding_context_menu)
         self.binding_tree.bind("<<TreeviewSelect>>", lambda _: self.show_selected_notice())
         self.binding_tree.tag_configure("special", foreground="#C85B67")
+        self.binding_tree.tag_configure("disabled", foreground="#7C8791")
 
         self.binding_context_menu = tk.Menu(self, tearoff=False)
         self.binding_context_menu.add_command(label="Test", command=self.test_selected)
         self.binding_context_menu.add_command(label="Edit…", command=self.edit_selected)
+        self.binding_context_menu.add_separator()
+        self.binding_context_menu.add_command(
+            label="Disable mapping", command=self.toggle_selected_enabled)
         self.binding_context_menu.add_separator()
         self.binding_context_menu.add_command(label="Remove", command=self.remove_binding)
         self.binding_context_menu.add_command(label="Reset default", command=self.reset_builtin)
@@ -667,6 +705,15 @@ class App(tk.Tk):
                              font=("Segoe UI Semibold", 11))
         self.style.configure("HeaderStatus.TLabel", background=palette["surface"],
                              foreground=palette["muted"], font=("Segoe UI", 9))
+        self.style.configure("Chrome.TButton", background=palette["surface"],
+                             foreground=palette["foreground"], padding=(10, 7),
+                             borderwidth=0, relief="flat",
+                             font=("Segoe Fluent Icons", 8))
+        self.style.map("Chrome.TButton",
+                       background=[("pressed", palette["select"]),
+                                   ("active", palette["hover"])],
+                       foreground=[("pressed", palette["accent"]),
+                                   ("active", palette["hover_foreground"])])
         self.style.configure("TNotebook", background=palette["background"], borderwidth=0)
         self.style.configure("TNotebook.Tab", background=palette["surface"],
                              foreground=palette["foreground"], padding=(12, 8),
@@ -739,8 +786,10 @@ class App(tk.Tk):
         self.option_add("*TCombobox*Listbox.background", palette["field"])
         self.option_add("*TCombobox*Listbox.foreground", palette["foreground"])
         self.option_add("*TCombobox*Listbox.selectBackground", palette["select"])
+        self.option_add("*TCombobox*Listbox.selectForeground", palette["accent"])
         if hasattr(self, "binding_tree"):
             self.binding_tree.tag_configure("special", foreground=palette["special"])
+            self.binding_tree.tag_configure("disabled", foreground=palette["muted"])
         if hasattr(self, "binding_context_menu"):
             self.binding_context_menu.configure(background=palette["surface"],
                                                 foreground=palette["foreground"],
@@ -781,7 +830,7 @@ class App(tk.Tk):
         engine.load_default_config()
         defaults = engine.DEFAULT_CONFIG
         settings = defaults.get("settings", {})
-        engine.MASTER_VOLUME = float(settings.get("master_volume", 0.25))
+        engine.MASTER_VOLUME = float(settings.get("master_volume", 0.5))
         engine.OUTPUT_DEVICE_NAME = settings.get("output_device", "Voicemeeter Input")
         engine.JOURNAL_DIR = os.path.expandvars(settings.get("journal_directory", engine.JOURNAL_DIR))
         engine.COLOR_THEME = settings.get("theme", "dark_blue")
@@ -871,6 +920,7 @@ class App(tk.Tk):
             values = (category, trigger_label, effect_label,
                       ("Automatic" if binding.get("action") == "continuous_stop"
                        else f"{float(binding.get('intensity', 1.0)):.2f}"),
+                      "Yes" if binding.get("enabled", True) else "No",
                       binding.get("source", "Custom"))
             if category_filter != "All categories" and category != category_filter:
                 continue
@@ -879,11 +929,16 @@ class App(tk.Tk):
             decorated.append((iid, binding, values, special))
 
         column_index = {"category": 0, "trigger": 1, "effect": 2,
-                        "intensity": 3, "source": 4}[self.sort_column]
+                        "intensity": 3, "enabled": 4, "source": 5}[self.sort_column]
         decorated.sort(key=lambda row: str(row[2][column_index]).lower(), reverse=self.sort_reverse)
-        for iid, _, values, special in decorated:
+        for iid, binding, values, special in decorated:
+            tags = []
+            if special is True:
+                tags.append("special")
+            if not binding.get("enabled", True):
+                tags.append("disabled")
             self.binding_tree.insert("", "end", iid=iid, values=values,
-                                     tags=("special",) if special is True else ())
+                                     tags=tuple(tags))
 
     def show_selected_notice(self):
         _, _, binding = self._selected_binding()
@@ -940,8 +995,13 @@ class App(tk.Tk):
         kind, _, binding = self._selected_binding()
         testable = bool(binding and not binding.get("control"))
         editable = bool(binding and binding.get("action") != "continuous_stop")
+        toggleable = bool(binding and binding.get("action") != "continuous_stop")
         self.binding_context_menu.entryconfigure("Test", state="normal" if testable else "disabled")
         self.binding_context_menu.entryconfigure("Edit…", state="normal" if editable else "disabled")
+        self.binding_context_menu.entryconfigure(
+            3, label=("Disable mapping" if binding and binding.get("enabled", True)
+                      else "Enable mapping"),
+            state="normal" if toggleable else "disabled")
         self.binding_context_menu.entryconfigure("Remove", state="normal" if kind == "custom" else "disabled")
         self.binding_context_menu.entryconfigure(
             "Reset default", state="normal" if kind == "builtin" else "disabled")
@@ -950,6 +1010,29 @@ class App(tk.Tk):
         finally:
             self.binding_context_menu.grab_release()
         return "break"
+
+    def toggle_selected_enabled(self):
+        """Toggle selected mappings while preserving automatic stop controls."""
+        selected = self.binding_tree.selection()
+        if not selected:
+            return
+        _, _, first = self._selected_binding()
+        target = not first.get("enabled", True) if first else True
+        for iid in selected:
+            kind, raw_index = iid.split(":", 1)
+            index = int(raw_index)
+            if kind == "builtin":
+                bindings = engine.get_builtin_bindings()
+                if index >= len(bindings) or bindings[index].get("action") == "continuous_stop":
+                    continue
+                trigger = bindings[index]["trigger"]
+                override = dict(engine.BUILTIN_OVERRIDES.get(trigger, {}))
+                override["enabled"] = target
+                engine.BUILTIN_OVERRIDES[trigger] = override
+            elif index < len(engine.CUSTOM_BINDINGS):
+                engine.CUSTOM_BINDINGS[index]["enabled"] = target
+        engine.save_config()
+        self.refresh_bindings()
 
     def center_dialog(self, dialog):
         """Center a completed dialog over the main application window."""
@@ -975,6 +1058,15 @@ class App(tk.Tk):
         dialog.bind("<Return>", invoke_default)
         dialog.bind("<KP_Enter>", invoke_default)
         dialog.bind("<Escape>", invoke_cancel)
+
+        def activate():
+            try:
+                dialog.lift()
+                dialog.focus_force()
+            except tk.TclError:
+                pass
+
+        dialog.after_idle(activate)
 
     def edit_selected(self):
         kind, index, binding = self._selected_binding()
@@ -1159,8 +1251,76 @@ class App(tk.Tk):
         self.master_label.configure(text=f"{engine.MASTER_VOLUME:.0%}")
         engine.save_config()
 
+    def enable_taskbar_window(self):
+        """Keep a borderless Tk window represented normally on the Windows taskbar."""
+        if sys.platform != "win32":
+            return
+        try:
+            hwnd = ctypes.windll.user32.GetParent(self.winfo_id()) or self.winfo_id()
+            style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
+            style = (style & ~0x00000080) | 0x00040000
+            ctypes.windll.user32.SetWindowLongW(hwnd, -20, style)
+            ctypes.windll.user32.SetWindowPos(
+                hwnd, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0020)
+        except (AttributeError, OSError, tk.TclError):
+            pass
+
+    def start_window_drag(self, event):
+        if self._window_maximized:
+            pointer_ratio = event.x_root / max(1, self.winfo_screenwidth())
+            self.toggle_maximize()
+            self.update_idletasks()
+            new_x = int(event.x_root - self.winfo_width() * pointer_ratio)
+            new_y = max(0, event.y_root - 18)
+            self.geometry(f"+{new_x}+{new_y}")
+        self._drag_origin = (event.x_root - self.winfo_x(), event.y_root - self.winfo_y())
+
+    def drag_window(self, event):
+        if not self._drag_origin or self._window_maximized:
+            return
+        x = event.x_root - self._drag_origin[0]
+        y = event.y_root - self._drag_origin[1]
+        self.geometry(f"+{x}+{y}")
+
+    def minimize_window(self):
+        if sys.platform == "win32":
+            try:
+                hwnd = ctypes.windll.user32.GetParent(self.winfo_id()) or self.winfo_id()
+                ctypes.windll.user32.ShowWindow(hwnd, 6)
+                return
+            except (AttributeError, OSError, tk.TclError):
+                pass
+        self.iconify()
+
+    def toggle_maximize(self):
+        if self._window_maximized:
+            if self._restore_geometry:
+                self.geometry(self._restore_geometry)
+            self._window_maximized = False
+            self.maximize_button.configure(text=WINDOW_GLYPHS["maximize"])
+            self.size_grip.place(relx=1.0, rely=1.0, anchor="se")
+            return
+
+        self._restore_geometry = self.geometry()
+        if sys.platform == "win32":
+            class Rect(ctypes.Structure):
+                _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                            ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+            area = Rect()
+            if ctypes.windll.user32.SystemParametersInfoW(48, 0, ctypes.byref(area), 0):
+                self.geometry(
+                    f"{area.right - area.left}x{area.bottom - area.top}+{area.left}+{area.top}")
+            else:
+                self.geometry(
+                    f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0")
+        else:
+            self.geometry(f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0")
+        self._window_maximized = True
+        self.maximize_button.configure(text=WINDOW_GLYPHS["restore"])
+        self.size_grip.place_forget()
+
     def on_window_configure(self, event):
-        if event.widget is not self or self.state() != "normal":
+        if event.widget is not self or self.state() != "normal" or self._window_maximized:
             return
         if self._geometry_save_job is not None:
             self.after_cancel(self._geometry_save_job)
@@ -1168,7 +1328,7 @@ class App(tk.Tk):
 
     def persist_window_geometry(self):
         self._geometry_save_job = None
-        if self.state() == "normal":
+        if self.state() == "normal" and not self._window_maximized:
             engine.WINDOW_GEOMETRY = self.geometry()
             engine.save_config()
 
@@ -1177,7 +1337,7 @@ class App(tk.Tk):
         if self._geometry_save_job is not None:
             self.after_cancel(self._geometry_save_job)
             self._geometry_save_job = None
-        if self.state() == "normal":
+        if self.state() == "normal" and not self._window_maximized:
             engine.WINDOW_GEOMETRY = self.geometry()
         engine.save_config()
         self.runtime.stop()

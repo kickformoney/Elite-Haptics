@@ -17,7 +17,7 @@ SAMPLE_RATE = 44100
 
 # Emergency fallbacks are used only if default_config.json is unavailable.
 FALLBACK_SETTINGS = {
-    "master_volume": 0.25,
+    "master_volume": 0.5,
     "output_device": "Voicemeeter Input",
     "theme": "dark_blue",
     "window_geometry": "940x780",
@@ -110,7 +110,7 @@ def load_trigger_definitions():
             )
 
         watchers = [
-            (int(item["bit"]), item["on"], item["off"])
+            (item.get("field", "Flags"), int(item["bit"]), item["on"], item["off"])
             for item in status_flags
         ]
         JOURNAL_TRIGGER_IDS = dict(journal_events)
@@ -118,7 +118,7 @@ def load_trigger_definitions():
         EVENT_MAP = dict(journal_events)
         FLAG_WATCHERS = watchers
         STATUS_TRIGGER_NAMES = [
-            name for _, on_name, off_name in watchers for name in (on_name, off_name)
+            name for _, _, on_name, off_name in watchers for name in (on_name, off_name)
         ]
         TRIGGERS_CONFIG_MTIME = modified
     except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
@@ -788,10 +788,12 @@ class StatusWatcher:
             new_flags = status.get("Flags", 0)
             CURRENT_STATUS_FLAGS = new_flags
 
-            for bit, on_trigger, off_trigger in FLAG_WATCHERS:
+            for field, bit, on_trigger, off_trigger in FLAG_WATCHERS:
+                old_value = self.last_status.get(field, 0)
+                new_value = status.get(field, 0)
                 mask = (1 << bit)
-                old_state = bool(old_flags & mask)
-                new_state = bool(new_flags & mask)
+                old_state = bool(old_value & mask)
+                new_state = bool(new_value & mask)
 
                 if old_state != new_state:
                     trigger = on_trigger if new_state else off_trigger

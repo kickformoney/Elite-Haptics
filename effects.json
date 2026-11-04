@@ -16,6 +16,168 @@
         }
       ]
     },
+    "ship_launch_limpet": {
+      "name": "Limpet Launch",
+      "category": "Ship",
+      "description": "A distant underside bay release followed by a soft launch impulse.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "sweep", "start_frequency": 42, "end_frequency": 29, "duration": 0.45, "volume": 0.42},
+        {"type": "wait", "duration": 0.18},
+        {"type": "sine", "frequency": 32, "duration": 0.16, "volume": 0.735}
+      ]
+    },
+    "fighter_launch": {
+      "name": "Fighter Launch",
+      "category": "Fighter",
+      "description": "A substantial bay mechanism, release, and accelerating departure for a ship-launched fighter.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "sine", "frequency": 31, "duration": 0.32, "volume": 0.5},
+        {"type": "wait", "duration": 0.18},
+        {"type": "sweep", "start_frequency": 38, "end_frequency": 67, "duration": 1.1, "volume": 0.52}
+      ]
+    },
+    "fighter_dock": {
+      "name": "Fighter Dock",
+      "category": "Fighter",
+      "description": "An approaching fighter, bay capture, and firm docking latch.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "sweep", "start_frequency": 65, "end_frequency": 34, "duration": 1.0, "volume": 0.4},
+        {"type": "wait", "duration": 0.2},
+        {"type": "sine", "frequency": 30, "duration": 0.28, "volume": 0.72}
+      ]
+    },
+    "ship_repair_limpet": {
+      "name": "Repair Limpet",
+      "category": "Ship",
+      "description": "A soft irregular mechanical rumble when a repair limpet completes work on the ship.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "layered", "frequencies": [32, 47], "duration": 1.6, "volume": 0.56},
+        {"type": "random_pulse", "frequency": 44, "count": 4, "pulse_duration": 0.08, "gap_duration": 0.1, "volume": 0.6, "frequency_variance": 0.18}
+      ]
+    },
+    "fuel_reservoir_transfer": {
+      "name": "Reservoir Replenished",
+      "category": "Fuel",
+      "description": "A short low fuel-transfer hum between the main tank and active reservoir.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "sine", "frequency": 54, "duration": 2.875, "volume": 0.22, "fade": 0.12},
+        {"type": "sine", "frequency": 38, "duration": 0.12, "volume": 0.38}
+      ]
+    },
+    "ship_scan_complete": {
+      "name": "Ship Scanned",
+      "category": "Ship",
+      "description": "A restrained confirmation bump after another vessel successfully scans the ship.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "sine", "frequency": 58, "duration": 0.28, "volume": 0.38}
+      ]
+    },
+    "ship_synthesis": {
+      "name": "Synthesis",
+      "category": "Ship",
+      "description": "A compact fabrication sequence for synthesized repairs or ammunition.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "random_pulse", "frequency": 52, "count": 4, "pulse_duration": 0.09, "gap_duration": 0.08, "volume": 0.34, "frequency_variance": 0.16},
+        {"type": "wait", "duration": 0.2},
+        {"type": "sweep", "start_frequency": 61, "end_frequency": 38, "duration": 0.45, "volume": 0.36}
+      ]
+    },
+    "ship_cargo_transfer": {
+      "name": "Cargo Transfer",
+      "category": "Ship",
+      "description": "Several muted handling bumps as cargo moves between vehicles or carrier storage.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "random_pulse", "frequency": 34, "count": 4, "pulse_duration": 0.15, "gap_duration": 0.18, "volume": 0.46, "frequency_variance": 0.2, "volume_variance": 0.18}
+      ]
+    },
+    "interdiction_attempt": {
+      "name": "Interdiction - Attempt",
+      "category": "Combat",
+      "description": "A focused rising pull and release when the player completes an interdiction attempt.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "sweep", "start_frequency": 28, "end_frequency": 62, "duration": 1.8, "volume": 0.58},
+        {"type": "wait", "duration": 0.15},
+        {"type": "sine", "frequency": 36, "duration": 0.24, "volume": 0.68}
+      ]
+    },
+    "carrier_fuel_deposit": {
+      "name": "Carrier Fuel Deposit",
+      "category": "Carrier",
+      "description": "A heavy but restrained transfer hum for depositing tritium into a fleet carrier.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "layered", "frequencies": [25, 34], "duration": 2.4, "volume": 0.3},
+        {"type": "sine", "frequency": 30, "duration": 0.22, "volume": 0.48}
+      ]
+    },
+    "glide_loop": {
+      "name": "Glide Mode Loop",
+      "category": "Travel",
+      "description": "One soft atmospheric-resistance segment repeated while planetary glide is active.",
+      "selectable": false,
+      "generator": "sequence",
+      "steps": [
+        {"type": "layered", "frequencies": [27, 36], "duration": 0.5, "volume": 0.176}
+      ]
+    },
+    "glide_preview": {
+      "name": "Glide Mode Preview",
+      "category": "Travel",
+      "description": "A soft steady atmospheric rumble for previewing planetary glide feedback.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "layered", "frequencies": [27, 36], "duration": 2.0, "volume": 0.176}
+      ]
+    },
+    "onfoot_low_oxygen": {
+      "name": "Low Oxygen",
+      "category": "On Foot",
+      "description": "Two small warning blips when suit oxygen becomes low.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "sine", "frequency": 62, "duration": 0.1, "volume": 0.8},
+        {"type": "wait", "duration": 0.16},
+        {"type": "sine", "frequency": 62, "duration": 0.1, "volume": 0.8}
+      ]
+    },
+    "onfoot_low_health": {
+      "name": "Low Health",
+      "category": "On Foot",
+      "description": "Two longer warning buzzes when on-foot health becomes low.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "sine", "frequency": 39, "duration": 0.34, "volume": 0.5},
+        {"type": "wait", "duration": 0.22},
+        {"type": "sine", "frequency": 39, "duration": 0.34, "volume": 0.5}
+      ]
+    },
+    "onfoot_very_cold": {
+      "name": "Very Cold",
+      "category": "On Foot",
+      "description": "Three crisp warning blips for extreme cold.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "random_pulse", "frequency": 67, "count": 3, "pulse_duration": 0.09, "gap_duration": 0.11, "volume": 0.8, "frequency_variance": 0.05}
+      ]
+    },
+    "onfoot_very_hot": {
+      "name": "Very Hot",
+      "category": "On Foot",
+      "description": "Three deeper warning blips for extreme heat.",
+      "generator": "sequence",
+      "steps": [
+        {"type": "random_pulse", "frequency": 42, "count": 3, "pulse_duration": 0.12, "gap_duration": 0.1, "volume": 0.6, "frequency_variance": 0.05}
+      ]
+    },
     "hit_hull": {
       "name": "Hull Hit",
       "category": "Combat",

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "settings": {
-    "master_volume": 0.25,
+    "master_volume": 0.5,
     "output_device": "Voicemeeter Input",
     "journal_directory": "%USERPROFILE%\\Saved Games\\Frontier Developments\\Elite Dangerous",
     "theme": "dark_blue",
@@ -48,7 +48,23 @@
     {"trigger":"srv_docked","effect":"srv_dock","intensity":1.0,"enabled":true},
     {"trigger":"srv_destroyed","effect":"srv_destroyed","intensity":1.0,"enabled":true},
     {"trigger":"srv_handbrake_engaged","effect":"srv_handbrake_on","intensity":1.0,"enabled":true},
-    {"trigger":"srv_handbrake_released","effect":"srv_handbrake_off","intensity":1.0,"enabled":true}
+    {"trigger":"srv_handbrake_released","effect":"srv_handbrake_off","intensity":1.0,"enabled":true},
+    {"trigger":"ship_limpet_launched","effect":"ship_launch_limpet","intensity":1.0,"enabled":true},
+    {"trigger":"fighter_launched","effect":"fighter_launch","intensity":1.0,"enabled":true},
+    {"trigger":"fighter_docked","effect":"fighter_dock","intensity":1.0,"enabled":true},
+    {"trigger":"ship_repair_drone","effect":"ship_repair_limpet","intensity":1.0,"enabled":true},
+    {"trigger":"fuel_reservoir_replenished","effect":"fuel_reservoir_transfer","intensity":1.0,"enabled":true},
+    {"trigger":"ship_scanned","effect":"ship_scan_complete","intensity":1.0,"enabled":true},
+    {"trigger":"ship_synthesis","effect":"ship_synthesis","intensity":1.0,"enabled":true},
+    {"trigger":"ship_cargo_transferred","effect":"ship_cargo_transfer","intensity":1.0,"enabled":true},
+    {"trigger":"combat_interdiction_attempt","effect":"interdiction_attempt","intensity":1.0,"enabled":true},
+    {"trigger":"carrier_fuel_deposited","effect":"carrier_fuel_deposit","intensity":1.0,"enabled":true},
+    {"trigger":"travel_glide_started","effect":"glide_loop","intensity":1.0,"enabled":true,"action":"continuous_start","state":"glide","interval":0.45,"description":"Starts continuous atmospheric feedback while Glide Mode is active."},
+    {"trigger":"travel_glide_stopped","effect":"glide_loop","intensity":1.0,"enabled":true,"action":"continuous_stop","state":"glide","description":"Automatically stops Glide Mode feedback."},
+    {"trigger":"onfoot_low_oxygen","effect":"onfoot_low_oxygen","intensity":1.0,"enabled":true},
+    {"trigger":"onfoot_low_health","effect":"onfoot_low_health","intensity":1.0,"enabled":true},
+    {"trigger":"onfoot_very_cold","effect":"onfoot_very_cold","intensity":1.0,"enabled":true},
+    {"trigger":"onfoot_very_hot","effect":"onfoot_very_hot","intensity":1.0,"enabled":true}
   ],
   "custom_bindings": [],
   "test_pad_modes": {
