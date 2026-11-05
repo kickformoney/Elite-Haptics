@@ -12,11 +12,15 @@ import json
 import os
 import queue
 import shutil
+import subprocess
 import sys
 import threading
 import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+
+from effect_recorder import (append_gesture, effect_definition, pad_values,
+                             trim_silence, unique_effect_id, validate_sequence_steps)
 
 
 def enable_crisp_windows_scaling():
@@ -44,6 +48,8 @@ spec.loader.exec_module(engine)
 
 EFFECTS_GUIDE_PATH = os.path.join(HERE, "EFFECTS_GUIDE.md")
 TRIGGERS_GUIDE_PATH = os.path.join(HERE, "TRIGGERS_GUIDE.md")
+APP_ICON_PATH = os.path.join(HERE, "elite-haptics.ico")
+CHANGELOG_CONFIG_PATH = os.path.join(HERE, "changelog.json")
 
 THEME_OPTIONS = {
     "dark_blue": "Dark Blue",
@@ -74,13 +80,20 @@ def normalize_theme_id(value):
 if getattr(sys, "frozen", False):
     application_dir = os.path.dirname(sys.executable)
     engine.CONFIG_PATH = os.path.join(application_dir, "haptics_config.json")
+    external_defaults_path = os.path.join(application_dir, "effects.default.json")
     external_effects_path = os.path.join(application_dir, "effects.json")
+    external_manifest_path = os.path.join(application_dir, "effects.legacy-manifest.json")
+    external_migrations_path = os.path.join(application_dir, "effect_migrations.json")
     external_triggers_path = os.path.join(application_dir, "triggers.json")
     external_guide_path = os.path.join(application_dir, "EFFECTS_GUIDE.md")
     external_triggers_guide_path = os.path.join(application_dir, "TRIGGERS_GUIDE.md")
     try:
-        if not os.path.exists(external_effects_path):
-            shutil.copyfile(engine.EFFECTS_CONFIG_PATH, external_effects_path)
+        for bundled, external in (
+                (engine.EFFECTS_DEFAULT_PATH, external_defaults_path),
+                (engine.EFFECTS_LEGACY_MANIFEST_PATH, external_manifest_path),
+                (engine.EFFECT_MIGRATIONS_PATH, external_migrations_path)):
+            if not os.path.exists(external) and os.path.exists(bundled):
+                shutil.copyfile(bundled, external)
         if not os.path.exists(external_triggers_path):
             shutil.copyfile(engine.TRIGGERS_CONFIG_PATH, external_triggers_path)
         if not os.path.exists(external_guide_path) and os.path.exists(EFFECTS_GUIDE_PATH):
@@ -89,6 +102,10 @@ if getattr(sys, "frozen", False):
                 and os.path.exists(TRIGGERS_GUIDE_PATH)):
             shutil.copyfile(TRIGGERS_GUIDE_PATH, external_triggers_guide_path)
         engine.EFFECTS_CONFIG_PATH = external_effects_path
+        engine.EFFECTS_DEFAULT_PATH = external_defaults_path
+        engine.EFFECTS_LEGACY_MANIFEST_PATH = external_manifest_path
+        engine.EFFECT_MIGRATIONS_PATH = external_migrations_path
+        engine.prepare_effect_catalog()
         engine.TRIGGERS_CONFIG_PATH = external_triggers_path
         engine.TRIGGERS_CONFIG_MTIME = None
         engine.load_trigger_definitions()
@@ -130,6 +147,45 @@ def trigger_details(trigger_id):
         (trigger_id.split("_", 1)[0].title(), trigger_id.replace("_", " ").title(), False, ""))
 
 
+def load_user_effect_catalog():
+    with open(engine.EFFECTS_CONFIG_PATH, "r", encoding="utf-8") as file:
+        catalog = json.load(file)
+    if not isinstance(catalog.get("effects"), dict):
+        raise ValueError("effects.json must contain an 'effects' object.")
+    return catalog
+
+
+def write_user_effect_catalog(catalog):
+    temporary = engine.EFFECTS_CONFIG_PATH + ".tmp"
+    try:
+        with open(temporary, "w", encoding="utf-8") as file:
+            json.dump(catalog, file, indent=2, ensure_ascii=False)
+            file.write("\n")
+        os.replace(temporary, engine.EFFECTS_CONFIG_PATH)
+    except Exception:
+        try:
+            os.remove(temporary)
+        except OSError:
+            pass
+        raise
+
+
+def duplicate_effect_name(name, exclude_id=None):
+    wanted = name.strip().casefold()
+    for effect_id, definition in engine.EFFECT_DEFINITIONS.items():
+        if effect_id != exclude_id and str(definition.get("name", "")).strip().casefold() == wanted:
+            return effect_id, definition.get("name", effect_id)
+    return None
+
+
+def is_builtin_effect_id(effect_id):
+    try:
+        with open(engine.EFFECTS_DEFAULT_PATH, "r", encoding="utf-8") as file:
+            return effect_id in json.load(file).get("effects", {})
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
 class Runtime:
     def __init__(self):
         self.observer = None
@@ -164,12 +220,419 @@ class Runtime:
             engine.STREAM = None
 
 
+class EffectRecorderDialog(tk.Toplevel):
+    """Modal gesture recorder that writes custom sequence effects."""
+
+    def __init__(self, owner):
+        super().__init__(owner)
+        self.owner = owner
+        self.title("Record custom effect")
+        self.transient(owner)
+        self.resizable(False, False)
+        self.configure(background=owner.palette["background"])
+        if os.path.exists(APP_ICON_PATH):
+            try:
+                self.iconbitmap(APP_ICON_PATH)
+            except tk.TclError:
+                pass
+        self.steps = []
+        self.recording = False
+        self.press = None
+        self.previous_release = None
+        self.live_name = f"effect_recorder_{id(self)}"
+        self.name_var = tk.StringVar(value="My Custom Effect")
+        self.category_var = tk.StringVar(value="Custom")
+        self.description_var = tk.StringVar()
+        self.status_var = tk.StringVar(value="Press Start, then play the pad.")
+        self._build()
+        self.protocol("WM_DELETE_WINDOW", self.cancel)
+        owner.bind_dialog_shortcuts(self, self.save, self.cancel)
+        self.grab_set()
+        owner.center_dialog(self)
+        self.name_entry.focus_set()
+
+    def _build(self):
+        body = ttk.Frame(self, padding=18)
+        body.pack(fill="both", expand=True)
+        ttk.Label(body, text="Effect Recorder", style="Title.TLabel").grid(
+            row=0, column=0, columnspan=4, sticky="w")
+        ttk.Label(body, text="Move the crosshair: vertical changes frequency • horizontal changes intensity",
+                  style="Muted.TLabel").grid(row=1, column=0, columnspan=4,
+                                              sticky="w", pady=(3, 12))
+        pad_frame = ttk.Frame(body)
+        pad_frame.grid(row=2, column=0, columnspan=4)
+        freq_guide = ttk.Frame(pad_frame, width=116, height=260)
+        freq_guide.grid(row=0, column=0, sticky="ns", padx=(0, 10))
+        freq_guide.grid_propagate(False)
+        ttk.Label(freq_guide, text="HIGH FREQUENCY\n120 Hz", style="Muted.TLabel",
+                  justify="right").pack(anchor="ne")
+        ttk.Label(freq_guide, text="LOW FREQUENCY\n20 Hz", style="Muted.TLabel",
+                  justify="right").pack(side="bottom", anchor="se")
+        self.pad = tk.Canvas(pad_frame, width=520, height=260, highlightthickness=1,
+                             highlightbackground=self.owner.palette["border"],
+                             background=self.owner.palette["field"], cursor="crosshair")
+        self.pad.grid(row=0, column=1)
+        self.pad.create_text(260, 130, text="CLICK / HOLD / DRAG",
+                             fill=self.owner.palette["muted"], font=("Segoe UI Semibold", 13))
+        strength_guide = ttk.Frame(pad_frame)
+        strength_guide.grid(row=1, column=1, sticky="ew", pady=(5, 0))
+        ttk.Label(strength_guide, text="SOFT  10%", style="Muted.TLabel").pack(side="left")
+        ttk.Label(strength_guide, text="INTENSITY", style="Muted.TLabel").pack(
+            side="left", expand=True)
+        ttk.Label(strength_guide, text="STRONG  100%", style="Muted.TLabel").pack(side="right")
+        self.cross_x = self.pad.create_line(260, 0, 260, 260,
+                                            fill=self.owner.palette["accent"], dash=(3, 4))
+        self.cross_y = self.pad.create_line(0, 130, 520, 130,
+                                            fill=self.owner.palette["accent"], dash=(3, 4))
+        self.cross_dot = self.pad.create_oval(255, 125, 265, 135,
+                                              outline=self.owner.palette["accent"], width=2)
+        self.pad_readout = self.pad.create_text(
+            272, 118, text="70 Hz  •  55%", anchor="sw",
+            fill=self.owner.palette["accent"], font=("Segoe UI Semibold", 9))
+        self.pad.bind("<Motion>", self.pad_motion)
+        self.pad.bind("<ButtonPress-1>", self.pad_press)
+        self.pad.bind("<B1-Motion>", self.pad_drag)
+        self.pad.bind("<ButtonRelease-1>", self.pad_release)
+
+        controls = ttk.Frame(body)
+        controls.grid(row=3, column=0, columnspan=4, sticky="ew", pady=(12, 16))
+        ttk.Button(controls, text="Record", command=self.start).pack(side="left")
+        ttk.Button(controls, text="Stop", command=self.stop).pack(side="left", padx=(7, 0))
+        ttk.Button(controls, text="Clear", command=self.clear).pack(side="left", padx=(7, 0))
+        ttk.Button(controls, text="Preview", command=self.preview).pack(side="left", padx=(7, 0))
+        ttk.Button(controls, text="Trim Silence", command=self.trim).pack(side="left", padx=(7, 0))
+        ttk.Label(controls, textvariable=self.status_var, style="Muted.TLabel").pack(
+            side="right", padx=(16, 0))
+
+        ttk.Label(body, text="Name").grid(row=4, column=0, sticky="w")
+        self.name_entry = ttk.Entry(body, textvariable=self.name_var, width=34)
+        self.name_entry.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(3, 10))
+        ttk.Label(body, text="Category").grid(row=4, column=2, sticky="w", padx=(12, 0))
+        ttk.Entry(body, textvariable=self.category_var, width=20).grid(
+            row=5, column=2, columnspan=2, sticky="ew", padx=(12, 0), pady=(3, 10))
+        ttk.Label(body, text="Description").grid(row=6, column=0, sticky="w")
+        ttk.Entry(body, textvariable=self.description_var).grid(
+            row=7, column=0, columnspan=4, sticky="ew", pady=(3, 16))
+        actions = ttk.Frame(body)
+        actions.grid(row=8, column=0, columnspan=4, sticky="e")
+        ttk.Button(actions, text="Cancel", command=self.cancel).pack(side="left")
+        ttk.Button(actions, text="Save effect", command=self.save).pack(
+            side="left", padx=(8, 0))
+        body.columnconfigure(0, weight=1)
+        body.columnconfigure(1, weight=1)
+        body.columnconfigure(2, weight=1)
+        body.columnconfigure(3, weight=1)
+
+    def _values(self, event):
+        return pad_values(event.x, event.y, int(self.pad["width"]), int(self.pad["height"]))
+
+    def pad_motion(self, event):
+        width, height = int(self.pad["width"]), int(self.pad["height"])
+        x = min(width, max(0, event.x))
+        y = min(height, max(0, event.y))
+        frequency, strength = pad_values(x, y, width, height)
+        self.pad.coords(self.cross_x, x, 0, x, height)
+        self.pad.coords(self.cross_y, 0, y, width, y)
+        self.pad.coords(self.cross_dot, x - 5, y - 5, x + 5, y + 5)
+        anchor = "se" if x > width - 115 else "sw"
+        label_x = x - 10 if anchor == "se" else x + 10
+        label_y = y - 8 if y > 28 else y + 22
+        self.pad.coords(self.pad_readout, label_x, label_y)
+        self.pad.itemconfigure(self.pad_readout, anchor=anchor,
+                               text=f"{frequency:.0f} Hz  •  {strength:.0%}")
+
+    def start(self):
+        self.recording = True
+        self.previous_release = time.monotonic()
+        self.status_var.set("Recording…")
+
+    def stop(self):
+        self.recording = False
+        self._stop_live()
+        self.press = None
+        self.status_var.set(f"Stopped • {len(self.steps)} steps")
+
+    def clear(self):
+        self.stop()
+        self.steps = []
+        self.previous_release = None
+        self.status_var.set("Cleared")
+
+    def trim(self):
+        self.steps = trim_silence(self.steps)
+        self.status_var.set(f"Silence trimmed • {len(self.steps)} steps")
+
+    def pad_press(self, event):
+        if not self.recording or self.press is not None:
+            return
+        now = time.monotonic()
+        frequency, strength = self._values(event)
+        self.press = {"at": now, "start": frequency, "current": frequency,
+                      "strength": strength, "samples": [(now, frequency, strength)]}
+        live = self.press
+        engine.interrupt_playback()
+        engine.start_live_tone(
+            self.live_name, lambda: (live["current"], live["strength"]))
+        self.status_var.set(f"{frequency:.0f} Hz • {strength:.0%}")
+
+    def pad_drag(self, event):
+        if self.press is None:
+            return
+        self.pad_motion(event)
+        frequency, strength = self._values(event)
+        self.press["current"] = frequency
+        self.press["strength"] = strength
+        now = time.monotonic()
+        if now - self.press["samples"][-1][0] >= 0.04:
+            self.press["samples"].append((now, frequency, strength))
+        self.status_var.set(f"{frequency:.0f} Hz • {strength:.0%}")
+
+    def pad_release(self, event):
+        if self.press is None:
+            return
+        released = time.monotonic()
+        frequency, strength = self._values(event)
+        self._stop_live()
+        samples = self.press["samples"]
+        samples.append((released, frequency, strength))
+        self.steps = append_gesture(self.steps, samples, self.previous_release)
+        self.previous_release = released
+        self.press = None
+        self.status_var.set(f"Recording… • {len(self.steps)} steps")
+
+    def _stop_live(self):
+        engine.stop_live_tone(self.live_name)
+        engine.interrupt_playback()
+
+    def preview(self):
+        self.stop()
+        try:
+            definition = effect_definition("Preview", "Custom", "", self.steps)
+        except ValueError as exc:
+            messagebox.showwarning("Nothing to preview", str(exc), parent=self)
+            return
+
+        def play_preview():
+            for step in definition["steps"]:
+                if step["type"] == "wait":
+                    time.sleep(step["duration"])
+                else:
+                    engine.play(engine.render_recipe_step(step))
+        threading.Thread(target=play_preview, daemon=True).start()
+        self.status_var.set("Previewing…")
+
+    def save(self):
+        self.stop()
+        try:
+            conflict = duplicate_effect_name(self.name_var.get())
+            if conflict:
+                raise ValueError(
+                    f"An effect named '{conflict[1]}' already exists. Choose a unique name.")
+            definition = effect_definition(
+                self.name_var.get(), self.category_var.get(), self.description_var.get(), self.steps)
+            catalog = load_user_effect_catalog()
+            effects = catalog.get("effects")
+            effect_id = unique_effect_id(self.name_var.get(), set(effects) |
+                                         set(engine.EFFECT_DEFINITIONS))
+            effects[effect_id] = definition
+            write_user_effect_catalog(catalog)
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            messagebox.showwarning("Could not save effect", str(exc), parent=self)
+            return
+        self.destroy()
+        self.owner.reload_effect_catalog()
+
+    def cancel(self):
+        self._stop_live()
+        self.destroy()
+
+
+class EffectEditorDialog(tk.Toplevel):
+    def __init__(self, manager, effect_id, definition):
+        super().__init__(manager)
+        self.manager = manager
+        self.effect_id = effect_id
+        self.title("Edit custom effect")
+        self.transient(manager)
+        self.resizable(False, False)
+        self.name_var = tk.StringVar(value=definition.get("name", effect_id))
+        self.category_var = tk.StringVar(value=definition.get("category", "Custom"))
+        self.description_var = tk.StringVar(value=definition.get("description", ""))
+        frame = ttk.Frame(self, padding=16)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text=f"Effect ID: {effect_id}", style="Muted.TLabel").grid(
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+        ttk.Label(frame, text="Name").grid(row=1, column=0, sticky="w")
+        ttk.Label(frame, text="Category").grid(row=1, column=1, sticky="w", padx=(12, 0))
+        self.name_entry = ttk.Entry(frame, textvariable=self.name_var, width=36)
+        self.name_entry.grid(row=2, column=0, sticky="ew", pady=(3, 10))
+        ttk.Entry(frame, textvariable=self.category_var, width=24).grid(
+            row=2, column=1, sticky="ew", padx=(12, 0), pady=(3, 10))
+        ttk.Label(frame, text="Description").grid(row=3, column=0, columnspan=2, sticky="w")
+        ttk.Entry(frame, textvariable=self.description_var).grid(
+            row=4, column=0, columnspan=2, sticky="ew", pady=(3, 10))
+        ttk.Label(frame, text="Sequence steps (JSON)").grid(
+            row=5, column=0, columnspan=2, sticky="w")
+        self.steps_text = tk.Text(frame, width=76, height=18, wrap="none", undo=True,
+                                  background=manager.owner.palette["field"],
+                                  foreground=manager.owner.palette["foreground"],
+                                  insertbackground=manager.owner.palette["foreground"],
+                                  selectbackground=manager.owner.palette["select"])
+        self.steps_text.grid(row=6, column=0, columnspan=2, pady=(3, 12))
+        self.steps_text.insert("1.0", json.dumps(definition.get("steps", []), indent=2))
+        actions = ttk.Frame(frame)
+        actions.grid(row=7, column=0, columnspan=2, sticky="e")
+        ttk.Button(actions, text="Cancel", command=self.destroy).pack(side="left")
+        ttk.Button(actions, text="Save changes", command=self.save).pack(side="left", padx=(8, 0))
+        manager.owner.bind_dialog_shortcuts(self, self.save, self.destroy)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.grab_set()
+        manager.owner.center_dialog(self)
+        self.name_entry.focus_set()
+
+    def save(self):
+        try:
+            name = self.name_var.get().strip()
+            category = self.category_var.get().strip()
+            if not name or not category:
+                raise ValueError("Name and category are required.")
+            conflict = duplicate_effect_name(name, self.effect_id)
+            if conflict:
+                raise ValueError(
+                    f"An effect named '{conflict[1]}' already exists. Choose a unique name.")
+            steps = validate_sequence_steps(json.loads(self.steps_text.get("1.0", "end")))
+            catalog = load_user_effect_catalog()
+            definition = catalog["effects"].get(self.effect_id)
+            if not isinstance(definition, dict):
+                raise ValueError("This custom effect no longer exists.")
+            definition.update({
+                "name": name, "category": category,
+                "description": self.description_var.get().strip(),
+                "generator": "sequence", "steps": steps,
+            })
+            write_user_effect_catalog(catalog)
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            messagebox.showwarning("Could not update effect", str(exc), parent=self)
+            return
+        self.destroy()
+        self.manager.catalog_changed()
+
+
+class EffectManagerDialog(tk.Toplevel):
+    def __init__(self, owner):
+        super().__init__(owner)
+        self.owner = owner
+        self.title("Manage custom effects")
+        self.transient(owner)
+        self.geometry("760x460")
+        self.minsize(680, 390)
+        
+        frame = ttk.Frame(self, padding=16)
+        frame.pack(fill="both", expand=True)
+        
+        # Top Labels
+        ttk.Label(frame, text="Custom effects", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(frame, text="Edit recorded sequences or remove an override to restore its default.",
+                  style="Muted.TLabel").pack(anchor="w", pady=(3, 10))
+        
+        # Bottom Actions Frame
+        actions = ttk.Frame(frame)
+        actions.pack(side="bottom", fill="x", pady=(12, 0))
+        
+        ttk.Button(actions, text="Edit selected…", command=self.edit_selected).pack(side="left")
+        ttk.Button(actions, text="Preview", command=self.preview_selected).pack(
+            side="left", padx=(8, 0))
+        ttk.Button(actions, text="Delete…", command=self.delete_selected).pack(
+            side="left", padx=(8, 0))
+        ttk.Button(actions, text="Close", command=self.destroy).pack(side="right")
+        
+        # Middle Treeview
+        self.tree = ttk.Treeview(frame, columns=("name", "category", "id"),
+                                 show="headings", selectmode="browse")
+        self.tree.heading("name", text="Name")
+        self.tree.heading("category", text="Category")
+        self.tree.heading("id", text="Effect ID")
+        self.tree.column("name", width=220)
+        self.tree.column("category", width=140)
+        self.tree.column("id", width=280)
+        self.tree.pack(side="top", fill="both", expand=True)        
+        self.tree.bind("<Double-1>", lambda _event: self.edit_selected())
+        
+        # Window & Protocol Configurations
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        owner.bind_dialog_shortcuts(self, self.edit_selected, self.destroy)
+        self.grab_set()
+        owner.center_dialog(self)
+        self.refresh()
+
+
+    def refresh(self):
+        self.tree.delete(*self.tree.get_children())
+        try:
+            effects = load_user_effect_catalog()["effects"]
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            messagebox.showwarning("Could not load custom effects", str(exc), parent=self)
+            return
+        for effect_id, definition in sorted(
+                effects.items(), key=lambda item: str(item[1].get("name", item[0])).casefold()):
+            self.tree.insert("", "end", iid=effect_id, values=(
+                definition.get("name", effect_id), definition.get("category", ""), effect_id))
+
+    def selected(self):
+        selection = self.tree.selection()
+        return selection[0] if selection else None
+
+    def edit_selected(self):
+        effect_id = self.selected()
+        if not effect_id:
+            return
+        definition = load_user_effect_catalog()["effects"].get(effect_id, {})
+        if definition.get("generator") != "sequence":
+            messagebox.showwarning("Cannot edit effect",
+                                   "Only recorded sequence effects can be edited here.", parent=self)
+            return
+        EffectEditorDialog(self, effect_id, definition)
+
+    def preview_selected(self):
+        effect_id = self.selected()
+        effect = engine.get_effect_registry().get(effect_id) if effect_id else None
+        if effect:
+            engine.interrupt_playback()
+            engine.queue_haptic(effect)
+
+    def delete_selected(self):
+        effect_id = self.selected()
+        if not effect_id:
+            return
+        catalog = load_user_effect_catalog()
+        definition = catalog["effects"].get(effect_id, {})
+        restoring = is_builtin_effect_id(effect_id)
+        detail = ("The built-in effect will be restored."
+                  if restoring else "Mappings that use this effect will no longer play it.")
+        if not messagebox.askyesno(
+                "Delete custom effect",
+                f"Delete '{definition.get('name', effect_id)}'?\n\n{detail}", parent=self):
+            return
+        catalog["effects"].pop(effect_id, None)
+        write_user_effect_catalog(catalog)
+        self.catalog_changed()
+
+    def catalog_changed(self):
+        self.owner.reload_effect_catalog(notify=False)
+        self.refresh()
+
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         engine.load_config()
         self.runtime = Runtime()
         self.title("Elite Haptics")
+        if os.path.exists(APP_ICON_PATH):
+            try:
+                self.iconbitmap(APP_ICON_PATH)
+            except tk.TclError:
+                pass
         self.overrideredirect(True)
         self._window_maximized = False
         self._restore_geometry = None
@@ -188,7 +651,10 @@ class App(tk.Tk):
         self.monitor_count_items = {}
         self.pad_effect_combos = []
 
-        self.status_text = tk.StringVar(value="Stopped")
+        self.status_text = tk.StringVar(value="Monitor disabled")
+        self._monitoring_state = "disabled"
+        self._runtime_ready = False
+        self._journal_activity_seen = False
         self.trigger_var = tk.StringVar()
         self.effect_var = tk.StringVar()
         self.intensity_var = tk.DoubleVar(value=1.0)
@@ -227,8 +693,11 @@ class App(tk.Tk):
         self.refresh_bindings()
         engine.add_monitor_listener(self.monitor_queue.put)
         self.bind("<Configure>", self.on_window_configure, add="+")
+        self.bind("<Map>", self.restore_custom_chrome, add="+")
         self.after(150, self.start_runtime)
         self.after(200, self.poll_monitor_events)
+        self.after(600, self.show_effect_migration_notice)
+        self.after(1000, self.refresh_monitoring_status)
         self.after(10, self.enable_taskbar_window)
 
     def _build(self):
@@ -252,9 +721,16 @@ class App(tk.Tk):
         ttk.Button(header, text=WINDOW_GLYPHS["minimize"], style="Chrome.TButton", width=4,
                    command=self.minimize_window).pack(side="right", padx=3, pady=5)
         self.status_label = ttk.Label(
-            header, textvariable=self.status_text, style="HeaderStatus.TLabel"
+            header, textvariable=self.status_text, style="HeaderStatus.TLabel",
+            width=26, anchor="w"
         )
-        self.status_label.pack(side="right", padx=10, pady=10)
+        self.status_label.pack(side="right", padx=(4, 10), pady=10)
+        self.status_dot = ttk.Label(header, text="●", style="StatusDisabled.TLabel")
+        self.status_dot.pack(side="right", padx=(10, 0), pady=(9, 11))
+        for widget in (self.status_dot, self.status_label):
+            widget.bind("<ButtonPress-1>", self.start_window_drag)
+            widget.bind("<B1-Motion>", self.drag_window)
+            widget.bind("<Double-Button-1>", lambda _: self.toggle_maximize())
 
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=18, pady=(12, 14))
@@ -411,58 +887,65 @@ class App(tk.Tk):
             grid.rowconfigure(n, weight=1)
 
     def _build_settings(self, parent):
-        ttk.Label(parent, text="Theme").grid(row=0, column=0, sticky="w", pady=(0, 16))
+        ttk.Button(parent, text="Recent changes",
+                   command=lambda: self.show_effect_migration_notice(force=True)).grid(
+                       row=0, column=1, sticky="e", pady=(0, 16))
+        ttk.Label(parent, text="Theme").grid(row=1, column=0, sticky="w", pady=(0, 16))
         self.theme_combo = ttk.Combobox(
             parent, textvariable=self.theme_var, values=list(THEME_OPTIONS.values()),
             state="readonly", width=20)
-        self.theme_combo.grid(row=0, column=1, sticky="e", pady=(0, 16))
+        self.theme_combo.grid(row=1, column=1, sticky="e", pady=(0, 16))
         self.theme_combo.bind("<<ComboboxSelected>>", lambda _: self.apply_theme())
-        ttk.Label(parent, text="Master strength").grid(row=1, column=0, sticky="w")
+        ttk.Label(parent, text="Master strength").grid(row=2, column=0, sticky="w")
         ttk.Scale(parent, from_=0.0, to=1.0, variable=self.master_var,
-                  command=self.change_master).grid(row=2, column=0, sticky="ew", pady=(4, 16))
+                  command=self.change_master).grid(row=3, column=0, sticky="ew", pady=(4, 16))
         self.master_label = ttk.Label(parent, text=f"{engine.MASTER_VOLUME:.0%}")
-        self.master_label.grid(row=2, column=1, padx=10)
-        ttk.Label(parent, text="Audio output device").grid(row=3, column=0, sticky="w")
+        self.master_label.grid(row=3, column=1, padx=10)
+        ttk.Label(parent, text="Audio output device").grid(row=4, column=0, sticky="w")
         try:
             devices = [dev["name"] for dev in engine.sd.query_devices()
                        if dev["max_output_channels"] > 0]
         except Exception:
             devices = [engine.OUTPUT_DEVICE_NAME]
         ttk.Combobox(parent, textvariable=self.device_var, values=devices,
-                     state="readonly").grid(row=4, column=0, columnspan=2,
+                     state="readonly").grid(row=5, column=0, columnspan=2,
                                             sticky="ew", pady=(4, 14))
-        ttk.Label(parent, text="Elite Dangerous journal folder").grid(row=5, column=0, sticky="w")
+        ttk.Label(parent, text="Elite Dangerous journal folder").grid(row=6, column=0, sticky="w")
         journal_row = ttk.Frame(parent)
-        journal_row.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(4, 14))
+        journal_row.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(4, 14))
         ttk.Entry(journal_row, textvariable=self.journal_var).pack(side="left", fill="x", expand=True)
         ttk.Button(journal_row, text="Browse…", command=self.browse_journal).pack(
             side="left", padx=(8, 0))
         settings_actions = ttk.Frame(parent)
-        settings_actions.grid(row=7, column=0, columnspan=2, sticky="w")
+        settings_actions.grid(row=8, column=0, columnspan=2, sticky="w")
         ttk.Button(settings_actions, text="Apply and reconnect", command=self.apply_settings).pack(
             side="left")
         ttk.Button(settings_actions, text="Reset all defaults…", command=self.reset_all_defaults).pack(
             side="left", padx=(8, 0))
         ttk.Label(parent, text="Applying briefly restarts audio and journal monitoring.",
-                  style="Muted.TLabel").grid(row=8, column=0, columnspan=2,
+                  style="Muted.TLabel").grid(row=9, column=0, columnspan=2,
                                              sticky="w", pady=(8, 0))
-        ttk.Separator(parent).grid(row=9, column=0, columnspan=2, sticky="ew", pady=(20, 14))
-        ttk.Label(parent, text="Effect catalog").grid(row=10, column=0, sticky="w")
+        ttk.Separator(parent).grid(row=10, column=0, columnspan=2, sticky="ew", pady=(20, 14))
+        ttk.Label(parent, text="Effect catalog").grid(row=11, column=0, sticky="w")
         effect_actions = ttk.Frame(parent)
-        effect_actions.grid(row=11, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        effect_actions.grid(row=12, column=0, columnspan=2, sticky="w", pady=(6, 0))
         ttk.Button(effect_actions, text="Open effects.json",
                    command=self.open_effects_file).pack(side="left")
         ttk.Button(effect_actions, text="Reload effects",
                    command=self.reload_effect_catalog).pack(side="left", padx=(8, 0))
-        ttk.Button(effect_actions, text="Authoring guide",
+        ttk.Button(effect_actions, text="Record effect…",
+                   command=self.open_effect_recorder).pack(side="left", padx=(8, 0))
+        ttk.Button(effect_actions, text="Manage effects…",
+                   command=self.open_effect_manager).pack(side="left", padx=(8, 0))
+        ttk.Button(effect_actions, text="Effect guide",
                    command=self.open_effects_guide).pack(side="left", padx=(8, 0))
         ttk.Label(parent, text=engine.EFFECTS_CONFIG_PATH, style="Muted.TLabel",
-                  wraplength=720).grid(row=12, column=0, columnspan=2,
+                  wraplength=720).grid(row=13, column=0, columnspan=2,
                                        sticky="w", pady=(8, 0))
         ttk.Label(parent, text="Trigger catalog").grid(
-            row=13, column=0, sticky="w", pady=(18, 0))
+            row=14, column=0, sticky="w", pady=(18, 0))
         trigger_actions = ttk.Frame(parent)
-        trigger_actions.grid(row=14, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        trigger_actions.grid(row=15, column=0, columnspan=2, sticky="w", pady=(6, 0))
         ttk.Button(trigger_actions, text="Open triggers.json",
                    command=self.open_triggers_file).pack(side="left")
         ttk.Button(trigger_actions, text="Reload triggers",
@@ -470,7 +953,7 @@ class App(tk.Tk):
         ttk.Button(trigger_actions, text="Trigger guide",
                    command=self.open_triggers_guide).pack(side="left", padx=(8, 0))
         ttk.Label(parent, text=engine.TRIGGERS_CONFIG_PATH, style="Muted.TLabel",
-                  wraplength=720).grid(row=15, column=0, columnspan=2,
+                  wraplength=720).grid(row=16, column=0, columnspan=2,
                                        sticky="w", pady=(8, 0))
         parent.columnconfigure(0, weight=1)
 
@@ -479,6 +962,18 @@ class App(tk.Tk):
             os.startfile(engine.EFFECTS_CONFIG_PATH)
         except (AttributeError, OSError) as exc:
             messagebox.showwarning("Could not open effects.json", str(exc))
+
+    def open_effect_recorder(self):
+        EffectRecorderDialog(self)
+
+    def open_effect_manager(self):
+        EffectManagerDialog(self)
+
+    def open_default_effects_file(self):
+        try:
+            os.startfile(engine.EFFECTS_DEFAULT_PATH)
+        except (AttributeError, OSError) as exc:
+            messagebox.showwarning("Could not open built-in effects", str(exc))
 
     def open_effects_guide(self):
         try:
@@ -498,13 +993,13 @@ class App(tk.Tk):
         except (AttributeError, OSError) as exc:
             messagebox.showwarning("Could not open trigger guide", str(exc))
 
-    def reload_effect_catalog(self):
+    def reload_effect_catalog(self, notify=True):
         try:
             with open(engine.EFFECTS_CONFIG_PATH, "r", encoding="utf-8") as file:
                 catalog = json.load(file)
             definitions = catalog.get("effects")
-            if not isinstance(definitions, dict) or not definitions:
-                raise ValueError("The catalog must contain a non-empty 'effects' object.")
+            if not isinstance(definitions, dict):
+                raise ValueError("The override catalog must contain an 'effects' object.")
             for effect_id, definition in definitions.items():
                 if not isinstance(definition, dict):
                     raise ValueError(f"Effect '{effect_id}' must be a JSON object.")
@@ -526,9 +1021,10 @@ class App(tk.Tk):
         for combo in self.pad_effect_combos:
             combo.configure(values=self.effect_choices)
         self.refresh_bindings()
-        messagebox.showinfo(
-            "Effects reloaded",
-            f"Loaded {len(engine.EFFECT_DEFINITIONS)} effects from effects.json.")
+        if notify:
+            messagebox.showinfo(
+                "Effects reloaded",
+                f"Loaded {len(engine.EFFECT_DEFINITIONS)} merged effects. User overrides: {len(definitions)}.")
 
     def reload_trigger_catalog(self):
         try:
@@ -615,6 +1111,8 @@ class App(tk.Tk):
             source = event.get("source", "App")
             raw_name = event.get("name", "")
             details = event.get("details", "")
+            if source == "Journal":
+                self._journal_activity_seen = True
             display_name = raw_name
             if source in ("App trigger", "Status"):
                 display_name = trigger_details(raw_name)[1]
@@ -658,7 +1156,7 @@ class App(tk.Tk):
                 "foreground": "#DFEAF2", "muted": "#8AA7BD", "border": "#263B50",
                 "select": "#162430", "accent": "#72B7F2", "accent_hover": "#93CAFA",
                 "hover": "#18334F", "hover_foreground": "#FFFFFF",
-                "trough": "#182839", "special": "#E47A86",
+                "trough": "#182839", "special": "#E47A86", "online": "#71C49A",
             }
         elif theme_id == "elite_amber":
             palette = {
@@ -666,7 +1164,7 @@ class App(tk.Tk):
                 "foreground": "#FFE3C2", "muted": "#C58A55", "border": "#5A2B00",
                 "select": "#3A1900", "accent": "#FF7100", "accent_hover": "#FF9A3D",
                 "hover": "#3D1E00", "hover_foreground": "#FFFFFF",
-                "trough": "#211000", "special": "#E47A86",
+                "trough": "#211000", "special": "#E47A86", "online": "#71C49A",
             }
         else:
             palette = {
@@ -674,9 +1172,10 @@ class App(tk.Tk):
                 "foreground": "#20272C", "muted": "#647583", "border": "#C5CED6",
                 "select": "#DCEAF7", "accent": "#3478B8", "accent_hover": "#24679F",
                 "hover": "#E1E7ED", "hover_foreground": "#20272C",
-                "trough": "#D4DCE3", "special": "#C85B67",
+                "trough": "#D4DCE3", "special": "#C85B67", "online": "#39865F",
             }
         self.style.theme_use("clam")
+        self.palette = dict(palette)
         self.configure(background=palette["background"])
         self.style.configure(".", background=palette["background"],
                              foreground=palette["foreground"], bordercolor=palette["border"],
@@ -705,6 +1204,23 @@ class App(tk.Tk):
                              font=("Segoe UI Semibold", 11))
         self.style.configure("HeaderStatus.TLabel", background=palette["surface"],
                              foreground=palette["muted"], font=("Segoe UI", 9))
+        self.style.configure("StatusOnline.TLabel", background=palette["surface"],
+                             foreground=palette["online"], font=("Segoe UI", 9))
+        self.style.configure("StatusOffline.TLabel", background=palette["surface"],
+                             foreground=palette["special"], font=("Segoe UI", 9))
+        self.style.configure("StatusDisabled.TLabel", background=palette["surface"],
+                             foreground=palette["muted"], font=("Segoe UI", 9))
+        self.style.configure("ChangelogNote.TLabel", background=palette["background"],
+                             foreground=palette["muted"], font=("Segoe UI", 8))
+
+        if hasattr(self, "status_dot"):
+            status_styles = {
+                "monitoring": "StatusOnline.TLabel",
+                "awaiting": "StatusOffline.TLabel",
+                "disabled": "StatusDisabled.TLabel",
+            }
+            self.status_dot.configure(
+                style=status_styles.get(self._monitoring_state, "StatusDisabled.TLabel"))
         self.style.configure("Chrome.TButton", background=palette["surface"],
                              foreground=palette["foreground"], padding=(10, 7),
                              borderwidth=0, relief="flat",
@@ -814,12 +1330,17 @@ class App(tk.Tk):
         engine.JOURNAL_DIR = journal
         engine.save_config()
         try:
+            self._runtime_ready = False
+            self.set_monitoring_status("disabled")
             self.runtime.stop()
             self.runtime = Runtime()
             self.runtime.start()
-            self.status_text.set("● Monitoring Elite Dangerous")
+            self._runtime_ready = True
+            self._journal_activity_seen = False
+            self.set_monitoring_status("awaiting")
         except Exception as exc:
-            self.status_text.set("● Setup needs attention")
+            self._runtime_ready = False
+            self.set_monitoring_status("disabled")
             messagebox.showwarning("Could not reconnect", str(exc))
 
     def reset_all_defaults(self):
@@ -856,10 +1377,220 @@ class App(tk.Tk):
     def start_runtime(self):
         try:
             self.runtime.start()
-            self.status_text.set("● Monitoring Elite Dangerous")
+            self._runtime_ready = True
+            self._journal_activity_seen = False
+            self.set_monitoring_status("awaiting")
         except Exception as exc:
-            self.status_text.set("● Setup needs attention")
+            self._runtime_ready = False
+            self.set_monitoring_status("disabled")
             messagebox.showwarning("Could not start monitoring", str(exc))
+
+    @staticmethod
+    def elite_dangerous_running():
+        """Return whether the live Elite Dangerous client is running on Windows."""
+        if sys.platform != "win32":
+            return True
+        try:
+            result = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq EliteDangerous64.exe", "/FO", "CSV", "/NH"],
+                capture_output=True, text=True, timeout=2,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                check=False)
+            return "EliteDangerous64.exe" in result.stdout
+        except (OSError, subprocess.SubprocessError):
+            return False
+
+    def refresh_monitoring_status(self):
+        """Show green only after live telemetry arrives while the game is running."""
+        if self._runtime_ready:
+            active = self._journal_activity_seen and self.elite_dangerous_running()
+            self.set_monitoring_status("monitoring" if active else "awaiting")
+        else:
+            self.set_monitoring_status("disabled")
+        self.after(2000, self.refresh_monitoring_status)
+
+    def set_monitoring_status(self, state):
+        """Update the header text and its independently colored status dot."""
+        states = {
+            "monitoring": ("Monitoring Elite Dangerous", "StatusOnline.TLabel"),
+            "awaiting": ("Awaiting connection...", "StatusOffline.TLabel"),
+            "disabled": ("Monitor disabled", "StatusDisabled.TLabel"),
+        }
+        self._monitoring_state = state if state in states else "disabled"
+        text, style = states[self._monitoring_state]
+        self.status_text.set(text)
+        if hasattr(self, "status_dot"):
+            self.status_dot.configure(style=style)
+
+    def show_effect_migration_notice(self, force=False):
+        """Show the one-time effect changelog and every compensated user value."""
+        notice = engine.PENDING_EFFECT_MIGRATION_NOTICE
+        if not notice:
+            if force:
+                messagebox.showinfo("Recent effect changes", "No effect migration has been applied yet.")
+            return
+        if notice.get("acknowledged") and not force:
+            return
+
+        version = notice.get("catalog_version", "the latest version")
+        backup_path = notice.get("backup_path")
+
+        dialog = tk.Toplevel(self)
+        dialog.title(f"What's new in Elite Haptics {version}")
+        if os.path.exists(APP_ICON_PATH):
+            try:
+                dialog.iconbitmap(APP_ICON_PATH)
+            except tk.TclError:
+                pass
+        dialog.transient(self)
+        dialog.grab_set()
+        frame = ttk.Frame(dialog, padding=16)
+        frame.pack(fill="both", expand=True)
+        text = tk.Text(frame, width=84, height=24,
+                       wrap="word", relief="flat", borderwidth=0, padx=8, pady=8)
+        palette = getattr(self, "palette", {})
+        text.configure(background=palette.get("field", "#FFFFFF"),
+                       foreground=palette.get("foreground", "#20272C"),
+                       insertbackground=palette.get("foreground", "#20272C"),
+                       selectbackground=palette.get("select", "#DCEAF7"),
+                       font=("Segoe UI", 10))
+        text.tag_configure("h1", font=("Segoe UI Semibold", 15),
+                           foreground=palette.get("accent", "#3478B8"), spacing3=8)
+        text.tag_configure("intro", font=("Segoe UI", 10), spacing3=14)
+        text.tag_configure("h2", font=("Segoe UI Semibold", 11),
+                           foreground=palette.get("accent", "#3478B8"), spacing1=8, spacing3=3)
+        text.tag_configure("h3", font=("Segoe UI Semibold", 10),
+                           foreground=palette.get("foreground", "#20272C"),
+                           spacing1=6, spacing3=3)
+        text.tag_configure("indented_h3", font=("Segoe UI Semibold", 10),
+                           foreground=palette.get("foreground", "#20272C"),
+                           lmargin1=28, lmargin2=28, spacing1=6, spacing3=3)
+        text.tag_configure("body", font=("Segoe UI", 10), spacing3=4)
+        text.tag_configure("bullet", font=("Segoe UI", 10), lmargin1=14, lmargin2=28, spacing3=4)
+        text.tag_configure("nested_bullet", font=("Segoe UI", 10),
+                           lmargin1=34, lmargin2=50, spacing3=4)
+        text.tag_configure("indented_text", font=("Segoe UI", 10),
+                           lmargin1=28, lmargin2=28, spacing3=4)
+        text.tag_configure("note", font=("Segoe UI", 9),
+                           foreground=palette.get("muted", "#647583"), spacing1=12)
+        text.tag_configure("strong", font=("Segoe UI Semibold", 10))
+
+        def insert_inline_markdown(value, tag):
+            parts = value.split("**")
+            for index, part in enumerate(parts):
+                text.insert("end", part, (tag, "strong") if index % 2 else tag)
+
+        def insert_effect_updates():
+            for effect in notice.get("effects", []):
+                text.insert(
+                    "end", f"{effect.get('effect_name') or effect.get('effect') or 'Effect'}\n",
+                    "h2")
+                text.insert(
+                    "end", effect.get("reason", "Built-in effect updated").rstrip(".") + "\n",
+                    "body")
+                if effect.get("skipped_user_override"):
+                    text.insert(
+                        "end",
+                        "• Your custom waveform was preserved, so its strengths were not changed\n",
+                        "bullet")
+                elif effect.get("adjustments"):
+                    for adjustment in effect["adjustments"]:
+                        insert_inline_markdown(
+                            "• Your customized strength was adjusted from "
+                            f"**{float(adjustment['previous']):.2f}** to "
+                            f"**{float(adjustment['current']):.2f}** as a result",
+                            "bullet")
+                        text.insert("end", "\n")
+                else:
+                    text.insert("end", "• No customized mapping strengths required adjustment\n",
+                                "bullet")
+
+        def insert_backup_details():
+            if backup_path:
+                text.insert("end", "A backup was created here before applying these changes:\n", "body")
+                text.insert("end", f"{backup_path}\n", "bullet")
+            else:
+                text.insert(
+                    "end", "No previous haptics_config.json existed, so no backup was required\n",
+                    "body")
+
+        try:
+            with open(CHANGELOG_CONFIG_PATH, "r", encoding="utf-8") as file:
+                changelog_blocks = json.load(file).get("blocks", [])
+        except (OSError, json.JSONDecodeError):
+            changelog_blocks = [
+                {"type": "heading1", "text": "Effect updates in Elite Haptics {{version}}"},
+                {"type": "placeholder", "name": "effect_updates"},
+                {"type": "heading2", "text": "Configuration backup"},
+                {"type": "placeholder", "name": "backup_details"},
+            ]
+
+        block_tags = {
+            "heading1": "h1", "heading2": "h2", "heading3": "h3",
+            "indented_heading3": "indented_h3", "paragraph": "intro",
+            "bullet": "bullet", "nested_bullet": "nested_bullet",
+            "indented_text": "indented_text", "note": "note",
+        }
+        inserted_effect_updates = False
+        inserted_backup_details = False
+        for block in changelog_blocks:
+            block_type = block.get("type")
+            if block_type == "placeholder":
+                if block.get("name") == "effect_updates":
+                    insert_effect_updates()
+                    inserted_effect_updates = True
+                elif block.get("name") == "backup_details":
+                    insert_backup_details()
+                    inserted_backup_details = True
+                continue
+            value = str(block.get("text", "")).replace("{{version}}", str(version))
+            if block_type == "bullet":
+                value = f"• {value}"
+            elif block_type == "nested_bullet":
+                value = f"• {value}"
+            insert_inline_markdown(value, block_tags.get(block_type, "body"))
+            text.insert("end", "\n")
+
+        if not inserted_effect_updates:
+            text.insert("end", "Customized effect strength adjustments\n", "h2")
+            text.insert(
+                "end",
+                "The following customized effect strength levels have been adjusted accordingly\n",
+                "intro")
+            insert_effect_updates()
+        if not inserted_backup_details:
+            text.insert("end", "Configuration backup\n", "h2")
+            insert_backup_details()
+        text.configure(state="disabled")
+        text.pack(fill="both", expand=True, pady=(10, 12))
+
+        ttk.Label(
+            frame,
+            text=("You can view this changelog at any time by clicking Recent changes "
+                  "in the top-right corner of the Settings tab"),
+            style="ChangelogNote.TLabel", wraplength=650).pack(anchor="w", pady=(0, 10))
+
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill="x")
+
+        def open_backup():
+            if backup_path and os.path.exists(backup_path):
+                os.startfile(os.path.dirname(backup_path))
+            else:
+                messagebox.showinfo("Configuration backup", "The recorded backup is not available.",
+                                    parent=dialog)
+
+        def acknowledge():
+            notice["acknowledged"] = True
+            engine.save_config()
+            dialog.destroy()
+
+        if backup_path:
+            ttk.Button(buttons, text="Open backup folder", command=open_backup).pack(side="left")
+        ttk.Button(buttons, text="OK", command=acknowledge).pack(side="right")
+        dialog.protocol("WM_DELETE_WINDOW", acknowledge)
+        self.bind_dialog_shortcuts(dialog, acknowledge, acknowledge)
+        self.center_dialog(dialog)
 
     def update_warning(self):
         selected = self.trigger_var.get().strip()
@@ -930,7 +1661,14 @@ class App(tk.Tk):
 
         column_index = {"category": 0, "trigger": 1, "effect": 2,
                         "intensity": 3, "enabled": 4, "source": 5}[self.sort_column]
-        decorated.sort(key=lambda row: str(row[2][column_index]).lower(), reverse=self.sort_reverse)
+        if self.sort_column == "category":
+            decorated.sort(
+                key=lambda row: (str(row[2][0]).lower(), str(row[2][1]).lower()),
+                reverse=self.sort_reverse)
+        else:
+            decorated.sort(
+                key=lambda row: str(row[2][column_index]).lower(),
+                reverse=self.sort_reverse)
         for iid, binding, values, special in decorated:
             tags = []
             if special is True:
@@ -1266,6 +2004,11 @@ class App(tk.Tk):
             pass
 
     def start_window_drag(self, event):
+        self._drag_origin = (event.x_root - self.winfo_x(), event.y_root - self.winfo_y())
+
+    def drag_window(self, event):
+        if not self._drag_origin:
+            return
         if self._window_maximized:
             pointer_ratio = event.x_root / max(1, self.winfo_screenwidth())
             self.toggle_maximize()
@@ -1273,24 +2016,23 @@ class App(tk.Tk):
             new_x = int(event.x_root - self.winfo_width() * pointer_ratio)
             new_y = max(0, event.y_root - 18)
             self.geometry(f"+{new_x}+{new_y}")
-        self._drag_origin = (event.x_root - self.winfo_x(), event.y_root - self.winfo_y())
-
-    def drag_window(self, event):
-        if not self._drag_origin or self._window_maximized:
-            return
+            self._drag_origin = (event.x_root - new_x, event.y_root - new_y)
         x = event.x_root - self._drag_origin[0]
         y = event.y_root - self._drag_origin[1]
         self.geometry(f"+{x}+{y}")
 
     def minimize_window(self):
-        if sys.platform == "win32":
-            try:
-                hwnd = ctypes.windll.user32.GetParent(self.winfo_id()) or self.winfo_id()
-                ctypes.windll.user32.ShowWindow(hwnd, 6)
-                return
-            except (AttributeError, OSError, tk.TclError):
-                pass
+        # A borderless Tk window must temporarily regain native chrome before
+        # iconifying, or Windows removes it from the taskbar, leaving it orphaned
+        self.overrideredirect(False)
         self.iconify()
+
+    def restore_custom_chrome(self, event=None):
+        """Reapply the custom title bar after restoring from the taskbar."""
+        if event is not None and event.widget is not self:
+            return
+        if self.state() == "normal" and not self.overrideredirect():
+            self.after_idle(lambda: self.overrideredirect(True))
 
     def toggle_maximize(self):
         if self._window_maximized:

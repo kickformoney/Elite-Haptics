@@ -59,7 +59,7 @@
     {"trigger":"ship_cargo_transferred","effect":"ship_cargo_transfer","intensity":1.0,"enabled":true},
     {"trigger":"combat_interdiction_attempt","effect":"interdiction_attempt","intensity":1.0,"enabled":true},
     {"trigger":"carrier_fuel_deposited","effect":"carrier_fuel_deposit","intensity":1.0,"enabled":true},
-    {"trigger":"travel_glide_started","effect":"glide_loop","intensity":1.0,"enabled":true,"action":"continuous_start","state":"glide","interval":0.45,"description":"Starts continuous atmospheric feedback while Glide Mode is active."},
+    {"trigger":"travel_glide_started","effect":"glide_loop","intensity":1.0,"enabled":true,"action":"continuous_start","state":"glide","interval":0.50,"description":"Starts continuous atmospheric feedback while Glide Mode is active."},
     {"trigger":"travel_glide_stopped","effect":"glide_loop","intensity":1.0,"enabled":true,"action":"continuous_stop","state":"glide","description":"Automatically stops Glide Mode feedback."},
     {"trigger":"onfoot_low_oxygen","effect":"onfoot_low_oxygen","intensity":1.0,"enabled":true},
     {"trigger":"onfoot_low_health","effect":"onfoot_low_health","intensity":1.0,"enabled":true},

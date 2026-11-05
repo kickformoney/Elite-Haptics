@@ -1,7 +1,9 @@
 """Core telemetry, waveform, and audio engine for Elite Haptics."""
 
 import json
+import hashlib
 import os
+import shutil
 import time
 import glob
 import threading
@@ -31,6 +33,9 @@ WINDOW_GEOMETRY = FALLBACK_SETTINGS["window_geometry"]
 CUSTOM_BINDINGS = []
 BUILTIN_OVERRIDES = {}
 TEST_PAD_MODES = {"Default": {}}
+APPLIED_EFFECT_MIGRATIONS = []
+EFFECT_CATALOG_VERSION = ""
+PENDING_EFFECT_MIGRATION_NOTICE = None
 
 # Transient telemetry and UI-observer state; intentionally never persisted.
 CURRENT_STATUS_FLAGS = 0
@@ -67,7 +72,12 @@ STATUS_TRIGGER_NAMES = []
 # Path to script configuration file
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "haptics_config.json")
 DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "default_config.json")
+EFFECTS_DEFAULT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "effects.default.json")
 EFFECTS_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "effects.json")
+EFFECTS_LEGACY_MANIFEST_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "effects.legacy-manifest.json")
+EFFECT_MIGRATIONS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "effect_migrations.json")
 TRIGGERS_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "triggers.json")
 DEFAULT_CONFIG = {}
 EFFECT_DEFINITIONS = {}
@@ -136,6 +146,8 @@ def load_config():
     """Load shipped defaults, then overlay the user's saved preferences."""
     global MASTER_VOLUME, CUSTOM_BINDINGS, BUILTIN_OVERRIDES
     global TEST_PAD_MODES, OUTPUT_DEVICE_NAME, JOURNAL_DIR, COLOR_THEME, WINDOW_GEOMETRY
+    global APPLIED_EFFECT_MIGRATIONS, PENDING_EFFECT_MIGRATION_NOTICE
+    prepare_effect_catalog()
     load_trigger_definitions()
     load_default_config()
     settings = DEFAULT_CONFIG.get("settings", {})
@@ -160,8 +172,11 @@ def load_config():
             BUILTIN_OVERRIDES = data.get("builtin_overrides", BUILTIN_OVERRIDES)
             if "test_pad_modes" in data:
                 TEST_PAD_MODES = data["test_pad_modes"]
+            APPLIED_EFFECT_MIGRATIONS = list(data.get("applied_effect_migrations", []))
+            PENDING_EFFECT_MIGRATION_NOTICE = data.get("pending_effect_migration_notice")
         except (json.JSONDecodeError, OSError):
             pass  # corrupt or unreadable - just use the default
+    apply_effect_strength_migrations()
 
 def load_default_config():
     """Load the shipped reset values and default trigger mappings."""
@@ -178,7 +193,7 @@ def save_config():
     try:
         with open(CONFIG_PATH, "w") as f:
             json.dump({
-                "schema_version": 1,
+                "schema_version": 2,
                 "master_volume": MASTER_VOLUME,
                 "output_device": OUTPUT_DEVICE_NAME,
                 "journal_directory": JOURNAL_DIR,
@@ -187,6 +202,8 @@ def save_config():
                 "custom_bindings": CUSTOM_BINDINGS,
                 "builtin_overrides": BUILTIN_OVERRIDES,
                 "test_pad_modes": TEST_PAD_MODES,
+                "applied_effect_migrations": APPLIED_EFFECT_MIGRATIONS,
+                "pending_effect_migration_notice": PENDING_EFFECT_MIGRATION_NOTICE,
             }, f, indent=2)
     except OSError as e:
         print(f"[WARNING] Could not save config: {e}")
@@ -232,6 +249,8 @@ audio_pending = None
 audio_pending_offset = 0
 playback_generation = 0
 playback_lock = threading.Lock()
+live_tones = {}
+live_tones_lock = threading.Lock()
 
 # Long-running state effects (fuel scooping, overheating) are generated in
 # short chunks so they can stop promptly when the corresponding Status.json
@@ -263,7 +282,35 @@ def audio_callback(outdata, frames, time, status):
             audio_pending = None
             audio_pending_offset = 0
 
-    outdata[:, 0] = data
+    # Recorder tones are synthesized for the current device buffer instead of
+    # being fed through the one-shot queue. This keeps their duty cycle and
+    # amplitude identical to a rendered effect while remaining responsive.
+    with live_tones_lock:
+        active_live_tones = list(live_tones.items())
+    for name, live_tone in active_live_tones:
+        try:
+            frequency, volume = live_tone["provider"]()
+            phase_start = live_tone["phase"]
+            phase_step = 2 * np.pi * float(frequency) / SAMPLE_RATE
+            phases = phase_start + phase_step * np.arange(frames)
+            data += np.sin(phases) * float(volume) * MASTER_VOLUME
+            live_tone["phase"] = (phase_start + phase_step * frames) % (2 * np.pi)
+        except Exception:
+            stop_live_tone(name)
+
+    outdata[:, 0] = np.clip(data, -1.0, 1.0)
+
+
+def start_live_tone(name, state_provider):
+    """Start a phase-continuous tone whose frequency and volume can change live."""
+    with live_tones_lock:
+        live_tones[name] = {"provider": state_provider, "phase": 0.0}
+
+
+def stop_live_tone(name):
+    """Stop a phase-continuous live tone if it exists."""
+    with live_tones_lock:
+        live_tones.pop(name, None)
 
 def init_audio():
     global DEVICE_INDEX, STREAM
@@ -351,7 +398,7 @@ def sine_wave(frequency, duration, volume=1.0, fade=True, fade_ms=50):
     return wave.astype(np.float32)
 
 
-def layered_wave(frequencies, duration, volume=1.0):
+def layered_wave(frequencies, duration, volume=1.0, fade_out=True):
     """
     Mix multiple sine waves together - creates richer, more complex feels.
     Good for things like engine rumble or hyperspace effects.
@@ -365,8 +412,9 @@ def layered_wave(frequencies, duration, volume=1.0):
     wave = wave / np.max(np.abs(wave)) * volume * MASTER_VOLUME
 
     # Fade out
-    fade_samples = int(len(wave) * 0.15)
-    wave[-fade_samples:] *= np.linspace(1.0, 0.0, fade_samples)
+    if fade_out:
+        fade_samples = int(len(wave) * 0.15)
+        wave[-fade_samples:] *= np.linspace(1.0, 0.0, fade_samples)
 
     return wave.astype(np.float32)
 
@@ -451,17 +499,170 @@ def noise_burst(duration, volume=1.0, lowpass_freq=80):
     return noise.astype(np.float32)
 
 
+def _effect_fingerprint(definition):
+    payload = json.dumps(definition, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _write_json(path, data):
+    with open(path, "w", encoding="utf-8") as file:
+        json.dump(data, file, indent=2)
+        file.write("\n")
+
+
+def prepare_effect_catalog():
+    """Create the override catalog or migrate a legacy all-in-one effects file."""
+    if not os.path.exists(EFFECTS_CONFIG_PATH):
+        try:
+            _write_json(EFFECTS_CONFIG_PATH, {
+                "schema_version": 1, "catalog_role": "user_overrides", "effects": {}})
+        except OSError as error:
+            print(f"[WARNING] Could not create user effect catalog: {error}")
+        return
+    try:
+        with open(EFFECTS_CONFIG_PATH, "r", encoding="utf-8") as file:
+            catalog = json.load(file)
+        with open(EFFECTS_LEGACY_MANIFEST_PATH, "r", encoding="utf-8") as file:
+            baseline = json.load(file).get("effect_hashes", {})
+
+        def is_known_builtin(effect_id, definition):
+            known_hashes = baseline.get(effect_id, [])
+            if isinstance(known_hashes, str):
+                known_hashes = [known_hashes]
+            return _effect_fingerprint(definition) in known_hashes
+
+        if catalog.get("catalog_role") == "user_overrides":
+            if catalog.get("migrated_from") and not catalog.get("compatibility_cleanup"):
+                original = catalog.get("effects", {})
+                overrides = {
+                    effect_id: definition for effect_id, definition in original.items()
+                    if not is_known_builtin(effect_id, definition)
+                }
+                timestamp = time.strftime("%Y%m%d-%H%M%S")
+                shutil.copy2(EFFECTS_CONFIG_PATH, f"{EFFECTS_CONFIG_PATH}.backup-{timestamp}")
+                catalog["effects"] = overrides
+                catalog["compatibility_cleanup"] = "dual-baseline-v1"
+                _write_json(EFFECTS_CONFIG_PATH, catalog)
+                print(f"[INFO] Cleaned migrated effects.json; preserved "
+                      f"{len(overrides)} user effect override(s).")
+            return
+        overrides = {}
+        for effect_id, definition in catalog.get("effects", {}).items():
+            if not is_known_builtin(effect_id, definition):
+                overrides[effect_id] = definition
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        shutil.copy2(EFFECTS_CONFIG_PATH, f"{EFFECTS_CONFIG_PATH}.backup-{timestamp}")
+        _write_json(EFFECTS_CONFIG_PATH, {
+            "schema_version": 1,
+            "catalog_role": "user_overrides",
+            "migrated_from": catalog.get("catalog_version", "1.0.0"),
+            "effects": overrides,
+        })
+        print(f"[INFO] Migrated effects.json; preserved {len(overrides)} user effect override(s).")
+    except (OSError, json.JSONDecodeError, TypeError) as error:
+        print(f"[WARNING] Could not migrate legacy effect catalog: {error}")
+
+
+def _adjust_effect_strengths(effect_id, factor):
+    """Apply one compensation factor to user-controlled mappings for an effect."""
+    adjustments = []
+
+    def adjust(mapping, label, default_intensity=1.0, report=True):
+        previous = float(mapping.get("intensity", default_intensity))
+        adjusted = max(0.0, min(3.0,
+            previous * factor))
+        current = round(round(adjusted / 0.05) * 0.05, 2)
+        mapping["intensity"] = current
+        if report:
+            adjustments.append({"mapping": label, "previous": previous, "current": current})
+
+    for binding in CUSTOM_BINDINGS:
+        if binding.get("effect") == effect_id:
+            adjust(binding, f"Custom mapping: {binding.get('trigger', 'Unknown trigger')}")
+
+    defaults = {binding.get("trigger"): binding for binding in DEFAULT_CONFIG.get("bindings", [])}
+    for trigger, override in BUILTIN_OVERRIDES.items():
+        base = defaults.get(trigger, {})
+        if override.get("effect", base.get("effect")) == effect_id:
+            adjust(override, f"Built-in mapping: {trigger}", base.get("intensity", 1.0))
+
+    for mode_name, mode in TEST_PAD_MODES.items():
+        for key, assignment in mode.items():
+            if isinstance(assignment, dict) and assignment.get("effect") == effect_id:
+                adjust(assignment, f"Test Pad '{mode_name}', key {key}", report=False)
+    return adjustments
+
+
+def apply_effect_strength_migrations():
+    """Apply each release-provided strength compensation exactly once."""
+    global APPLIED_EFFECT_MIGRATIONS, EFFECT_CATALOG_VERSION
+    global PENDING_EFFECT_MIGRATION_NOTICE
+    try:
+        with open(EFFECT_MIGRATIONS_PATH, "r", encoding="utf-8") as file:
+            catalog = json.load(file)
+        EFFECT_CATALOG_VERSION = str(catalog.get("catalog_version", ""))
+        pending = [item for item in catalog.get("migrations", [])
+                   if item.get("id") not in APPLIED_EFFECT_MIGRATIONS]
+        if not pending:
+            return
+        with open(EFFECTS_CONFIG_PATH, "r", encoding="utf-8") as file:
+            user_effects = set(json.load(file).get("effects", {}))
+        backup_path = None
+        if os.path.exists(CONFIG_PATH):
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            backup_path = f"{CONFIG_PATH}.backup-{timestamp}"
+            shutil.copy2(CONFIG_PATH, backup_path)
+        report = []
+        for migration in pending:
+            effect_id = migration.get("effect")
+            factor = float(migration.get("strength_factor", 1.0))
+            # A user override keeps its own waveform, so a built-in gain change
+            # must not alter mappings that reference that overridden effect.
+            skipped = effect_id in user_effects
+            adjustments = []
+            if effect_id and not skipped and factor > 0:
+                adjustments = _adjust_effect_strengths(effect_id, factor)
+            report.append({
+                "id": migration.get("id"),
+                "effect": effect_id,
+                "effect_name": migration.get("effect_name", effect_id),
+                "reason": migration.get("reason", "Built-in effect updated."),
+                "output_multiplier": migration.get("output_multiplier"),
+                "strength_factor": factor,
+                "skipped_user_override": skipped,
+                "adjustments": adjustments,
+            })
+            APPLIED_EFFECT_MIGRATIONS.append(migration["id"])
+        PENDING_EFFECT_MIGRATION_NOTICE = {
+            "catalog_version": EFFECT_CATALOG_VERSION,
+            "backup_path": backup_path,
+            "effects": report,
+        }
+        save_config()
+        changed = sum(len(item["adjustments"]) for item in report)
+        print(f"[INFO] Applied {len(pending)} effect migration(s); adjusted {changed} mapping(s).")
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
+        print(f"[WARNING] Could not apply effect migrations: {error}")
+
+
 def load_effect_definitions():
-    """Load data-driven effects when the external catalog changes."""
+    """Merge shipped effect defaults with the user's additions and overrides."""
     global EFFECT_DEFINITIONS, EXTERNAL_EFFECTS, EFFECTS_CONFIG_MTIME
     try:
-        modified = os.path.getmtime(EFFECTS_CONFIG_PATH)
+        prepare_effect_catalog()
+        modified = (os.path.getmtime(EFFECTS_DEFAULT_PATH),
+                    os.path.getmtime(EFFECTS_CONFIG_PATH))
         if EFFECTS_CONFIG_MTIME == modified:
             return
-        with open(EFFECTS_CONFIG_PATH, "r") as file:
-            catalog = json.load(file)
-        EFFECT_DEFINITIONS = catalog.get("effects", {})
-        for effect_id, description in catalog.get("descriptions", {}).items():
+        with open(EFFECTS_DEFAULT_PATH, "r", encoding="utf-8") as file:
+            defaults = json.load(file)
+        with open(EFFECTS_CONFIG_PATH, "r", encoding="utf-8") as file:
+            overrides = json.load(file)
+        EFFECT_DEFINITIONS = dict(defaults.get("effects", {}))
+        EFFECT_DEFINITIONS.update(overrides.get("effects", {}))
+        descriptions = dict(defaults.get("descriptions", {}))
+        descriptions.update(overrides.get("descriptions", {}))
+        for effect_id, description in descriptions.items():
             if effect_id in EFFECT_DEFINITIONS:
                 EFFECT_DEFINITIONS[effect_id]["description"] = description
         EFFECTS_CONFIG_MTIME = modified
@@ -563,7 +764,8 @@ def render_recipe_step(step, variables=None):
     if step_type == "layered":
         return layered_wave([float(resolve_recipe_value(item, variables))
                              for item in step.get("frequencies", [])],
-                            float(value("duration", 0.5)), float(value("volume", 1.0)))
+                            float(value("duration", 0.5)), float(value("volume", 1.0)),
+                            fade_out=bool(value("fade_out", True)))
     if step_type == "sweep":
         return rising_wave(float(value("start_frequency", 30)),
                            float(value("end_frequency", 60)),

@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "blocks": [
+    {
+      "type": "heading1",
+      "text": "Updates in Elite Haptics {{version}}"
+    },
+    {
+      "type": "heading2",
+      "text": "UI Updates"
+    },
+    {
+      "type": "bullet",
+      "text": "Added live monitoring status"
+    },
+    {
+      "type": "bullet",
+      "text": "Added changelog, migration notices, etc."
+    },
+    {
+      "type": "bullet",
+      "text": "Added effect recorder to the Settings screen for creating custom effects"
+    },
+    {
+      "type": "bullet",
+      "text": "Added reload effects from catalog option"
+    },
+    {
+      "type": "bullet",
+      "text": "Added Enabled column to the Effects Treeview"
+    },
+    {
+      "type": "bullet",
+      "text": "Added scrollbar to the Effects Treeview"
+    },
+    {
+      "type": "bullet",
+      "text": "Added mapping enable/disable actions to the context menu"
+    },
+    {
+      "type": "bullet",
+      "text": "Fixed drop-down selection colors in the Light theme"
+    },
+    {
+      "type": "bullet",
+      "text": "Improved Esc/Enter keyboard handling in dialogs"
+    },
+    {
+      "type": "bullet",
+      "text": "Replaced the standard title bar with custom header"
+    },
+    {
+      "type": "heading2",
+      "text": "Effect Updates"
+    },
+    {
+      "type": "bullet",
+      "text": "Changed the default master strength to 50%"
+    },
+    {
+      "type": "bullet",
+      "text": "Tuned several effect strengths and durations"
+    },
+    {
+      "type": "bullet",
+      "text": "Split default effects from user effects"
+    },
+    {
+      "type": "bullet",
+      "text": "Any changes to the default effect intensity will update custom values accordingly"
+    },
+    {
+      "type": "bullet",
+      "text": "Added new carrier, ship, fighter, fuel, combat, travel, and on-foot haptic effects:"
+    },
+    {
+      "type": "indented_heading3",
+      "text": "Carrier"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Carrier Fuel Deposit"
+    },
+    {
+      "type": "indented_heading3",
+      "text": "Combat"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Interdiction Attempt"
+    },
+    {
+      "type": "indented_heading3",
+      "text": "Fighter"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Fighter Launched"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Fighter Docked"
+    },
+    {
+      "type": "indented_heading3",
+      "text": "Fuel"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Reservoir Replenished"
+    },
+    {
+      "type": "indented_heading3",
+      "text": "On Foot"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Player Low Oxygen/Low Health"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Body temperature Very Hot/Very Cold"
+    },
+    {
+      "type": "indented_heading3",
+      "text": "Ship"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Cargo Transferred"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Limpet Launched"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Repair Limpet - Repairs Completed"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Ship Scanned"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Synthesis Complete"
+    },
+    {
+      "type": "indented_heading3",
+      "text": "Travel"
+    },
+    {
+      "type": "nested_bullet",
+      "text": "Glide Mode (includes preview in Test Pad tab)"
+    }
+  ],
+  "source": "CHANGELOG.md"
+}

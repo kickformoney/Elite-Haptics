@@ -1,12 +1,16 @@
 # Elite Haptics effect catalog
 
-`effects.json` is the editable catalog used by Elite Haptics. Keep the file as valid JSON: property names and text require double quotes, commas separate entries, and JSON does not support comments.
+`effects.default.json` contains the built-in catalog shipped with Elite Haptics. `effects.json` is the update-safe user override catalog. Add only new effects or built-in effects you want to replace to `effects.json`; matching IDs override the shipped definition at runtime.
+
+Keep `effects.json` as valid JSON: property names and text require double quotes, commas separate entries, and JSON does not support comments. Application updates replace `effects.default.json` but preserve `effects.json`.
+
+Before an update changes the strength of a built-in effect, Elite Haptics backs up `haptics_config.json` and applies any release-provided compensation to customized mappings and Test Pad assignments. Migrated strengths are rounded to the nearest `0.05`. Effects overridden in `effects.json` are never automatically compensated because their built-in waveform is not being used.
 
 ## Safest way to add an effect
 
 1. Make a backup of `effects.json`.
-2. Duplicate a similar entry inside the `effects` object.
-3. Give the duplicate a unique ID, such as `my_docking_clamp`.
+2. Duplicate a similar entry from `effects.default.json` inside the `effects` object in `effects.json`.
+3. Give a new effect a unique ID, such as `my_docking_clamp`. To override a built-in effect, keep its existing ID.
 4. Change its `name`, `category`, `description`, and recipe values.
 5. Save the file and choose **Settings > Reload effects**.
 6. Test it on the Test Pad, then assign it to a telemetry trigger on the Effects tab.

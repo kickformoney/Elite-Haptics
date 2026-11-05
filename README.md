@@ -93,7 +93,9 @@ For a normal release, omit `-Prerelease`. By default, GitHub generates release n
 
 ## Editing and adding effects
 
-The working effect catalog is `effects.json`. In the application, use **Settings > Open effects.json**, save changes, then choose **Reload effects**. New selectable effects become available in the Test Pad and mapping controls.
+Built-in effects are stored in `effects.default.json`; update-safe user additions and overrides belong in `effects.json`. In the application, use **Settings > Open effects.json**, save changes, then choose **Reload effects**. New selectable effects become available in the Test Pad and mapping controls. To customize a built-in effect, copy its entry from `effects.default.json` into `effects.json` and keep the same effect ID.
+
+Release notes are authored in `CHANGELOG.md`. The build compiles the supported Markdown subset into `changelog.json`; the application then appends customized strength adjustments and backup details from the actual migration report automatically.
 
 See [EFFECTS_GUIDE.md](EFFECTS_GUIDE.md) for the recipe format, supported waveform steps, random values, and an example effect.
 

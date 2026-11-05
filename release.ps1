@@ -39,6 +39,11 @@ Push-Location $projectRoot
 try {
     Invoke-CheckedCommand git 'rev-parse' '--is-inside-work-tree'
 
+    # The normal build generates both changelog.json and the normalized
+    # GitHub release notes before the repository cleanliness check.
+    Write-Host "Building Elite Haptics $tag..." -ForegroundColor Cyan
+    Invoke-CheckedCommand cmd.exe '/c' 'build-ui.cmd'
+
     $uncommittedChanges = @(git status --porcelain --untracked-files=all)
     if ($LASTEXITCODE -ne 0) {
         throw 'Unable to check the Git working tree.'
@@ -47,12 +52,21 @@ try {
         throw 'The repository has uncommitted files. Commit or stash them before creating a release.'
     }
 
-    Write-Host "Building Elite Haptics $tag..." -ForegroundColor Cyan
-    Invoke-CheckedCommand cmd.exe '/c' 'build-ui.cmd'
+    $previousTag = @(git describe --tags --abbrev=0)
+    if ($LASTEXITCODE -ne 0 -or $previousTag.Count -ne 1) {
+        throw 'Unable to determine the previous release tag for effect migration checks.'
+    }
+    Invoke-CheckedCommand '.\.venv\Scripts\python.exe' 'generate_effect_migrations.py' `
+        '--previous-git-ref' $previousTag[0] '--current' 'effects.default.json' `
+        '--to-version' $versionNumber '--output' 'effect_migrations.json' '--check'
 
     $packageFiles = @(
         @{ Source = 'dist\elite-haptics.exe'; Destination = 'elite-haptics.exe' }
-        @{ Source = 'dist\effects.json'; Destination = 'effects.json' }
+        @{ Source = 'dist\effects.default.json'; Destination = 'effects.default.json' }
+        @{ Source = 'dist\effects.legacy-manifest.json'; Destination = 'effects.legacy-manifest.json' }
+        @{ Source = 'dist\effect_migrations.json'; Destination = 'effect_migrations.json' }
+        @{ Source = 'dist\CHANGELOG.md'; Destination = 'CHANGELOG.md' }
+        @{ Source = 'dist\changelog.json'; Destination = 'changelog.json' }
         @{ Source = 'dist\triggers.json'; Destination = 'triggers.json' }
         @{ Source = 'dist\EFFECTS_GUIDE.md'; Destination = 'EFFECTS_GUIDE.md' }
         @{ Source = 'dist\TRIGGERS_GUIDE.md'; Destination = 'TRIGGERS_GUIDE.md' }
@@ -125,7 +139,8 @@ try {
         $resolvedNotesFile = (Resolve-Path -LiteralPath $NotesFile).Path
         $releaseArguments += @('--notes-file', $resolvedNotesFile)
     } else {
-        $releaseArguments += '--generate-notes'
+        $generatedNotesFile = (Resolve-Path -LiteralPath 'build\release-notes.md').Path
+        $releaseArguments += @('--notes-file', $generatedNotesFile)
     }
     if ($Prerelease) {
         $releaseArguments += '--prerelease'
