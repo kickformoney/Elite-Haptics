@@ -73,12 +73,27 @@ def main():
     output_path = pathlib.Path(args.output)
     manifest = (json.loads(output_path.read_text(encoding="utf-8"))
                 if output_path.exists() else {"schema_version": 1, "migrations": []})
-    existing = {item["id"] for item in manifest.get("migrations", [])}
+    existing_migrations = manifest.get("migrations", [])
+    existing_ids = {item["id"] for item in existing_migrations}
     added = []
     for effect_id in sorted(old.keys() & new.keys()):
         factor = compensation_factor(old[effect_id], new[effect_id])
+        if factor is None:
+            continue
         migration_id = f"{args.to_version}-{effect_id}-strength"
-        if factor is not None and migration_id not in existing:
+        already_prepared = migration_id in existing_ids or any(
+            str(item.get("id", "")).startswith(f"{args.to_version}-")
+            and item.get("effect") == effect_id
+            and math.isclose(
+                float(item.get("strength_factor", 0)),
+                factor,
+                rel_tol=1e-6,
+                abs_tol=1e-9,
+            )
+            for item in existing_migrations
+        )
+
+        if not already_prepared:
             added.append({
                 "id": migration_id,
                 "effect": effect_id,

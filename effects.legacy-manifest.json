@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "source_catalog_versions": [
+    "1.0.0",
+    "1.0.1-development"
+  ],
+  "effect_hashes": {
+    "boost": [
+      "8e0fa9cc3351db4927fc73bc3317e07339e2c94cff1293b016397ae88f467fa0"
+    ],
+    "carrier_fuel_deposit": [
+      "89e3540c1250aab5b03c8335aeeca1e366a8c1040a3e8b775696651a7e4393e8"
+    ],
+    "escape_interdiction": [
+      "d438a8c09415e0c4118fecb085b09f7e243b8a9f8a54ef937b9a132690e9ce2b"
+    ],
+    "fighter_dock": [
+      "a5d933f37f209b83325c6dbcca366fbecce05fbe917e0b999ade07b5a8780e4a"
+    ],
+    "fighter_launch": [
+      "3fcc74cf22b805e426dbb5331ea2ca6230e3a7b07ff8243a178eb562be3fc3d3"
+    ],
+    "fuel_reservoir_transfer": [
+      "cf58b517fc093372cecf06b77f3678c21121e38b05d5b0aaa2398caed497cae5"
+    ],
+    "fuel_scoop_loop": [
+      "03c9cae4b8933e3480f8298aae5f18e94937f5285a47d5e70d35e88356b81689"
+    ],
+    "fuel_scoop_preview": [
+      "41c6e340cc3ef6e970ca017a2dec325bb10375561c60a586d94d7faf753e3dfb"
+    ],
+    "glide_loop": [
+      "b59bab9f0a8838e519f6740bc9a7849f0862bb779aa506090cb33c59dacc645a"
+    ],
+    "glide_preview": [
+      "cd943b4b7adc1481ca17a7a5e6691d28a404a0d12b8c87a87c394070b2fb36be"
+    ],
+    "hit_hull": [
+      "a654407450a8f8cb16ccda95f84981f9ac2b4ed3216f375b4d394e0d31a4e8d0"
+    ],
+    "hit_shield": [
+      "424fb74be89bb340748b33fc1a522af65bc32f2f8d6d2e99254626acafed574e"
+    ],
+    "hull_threshold_20": [
+      "5ece5ae9d3fecdd8247884bb9e4b7958b1b44f28b5ea4f529a5774130beaf19c"
+    ],
+    "hull_threshold_40": [
+      "0b617d485f7c78e8053c227d3e4c891ef50f1316a0fd59b53c26d04458ef56c5"
+    ],
+    "hull_threshold_60": [
+      "f4a82f2c7fa2f91d2cff103edc07ca3889ce8ebcea0be2a3686d6c836cc774b1"
+    ],
+    "hull_threshold_80": [
+      "a284bc071ef196f997fe9d58529b07e9e2f3ae815dda11e78befa384a716c72f"
+    ],
+    "interdiction": [
+      "c0136298012a810285456da308240c1e73e7ca5209b01b1e6c7feb4856cf6a35"
+    ],
+    "interdiction_attempt": [
+      "8f7cbcc09a4b333352985dd865b3e1ec5ae2bba0cd4b03e4c65542fdb5834793"
+    ],
+    "mass_lock": [
+      "c23c461b02ebea0f27d40a051c1fa4deee54d1a07208badc63f486039d1af67c"
+    ],
+    "onfoot_low_health": [
+      "9e14a087cae565975f781570be77ed48d6a95b8bf4da6d5bd241b0477d8cfb22"
+    ],
+    "onfoot_low_oxygen": [
+      "15835f339d71531ca7781d3ddc71409eda47795765678d215fd73e613dabe55e"
+    ],
+    "onfoot_very_cold": [
+      "7783d92323398829d96d6efcd64e5d74d3ff65ab9666e719d54d5b9516206204"
+    ],
+    "onfoot_very_hot": [
+      "26d26b0a4c1794087dab07958ce05df1235e360d05e935f7db731a6a8c3514f1"
+    ],
+    "other_afmurepair": [
+      "9363835a474b36a94a954e47e7e14e1b04c093ea31d6b5ce8dc0d4432d3d38a9"
+    ],
+    "other_cockpitbreach": [
+      "a923a4899aa021220e9d7a5af20d6771859722cc563358dec2c8a6474572157a"
+    ],
+    "other_selfdestruct": [
+      "21d26e737e6488daa287c3e03428ffd79ab049766982e0778a9fee1dbde32847"
+    ],
+    "other_systemsshutdown": [
+      "ea68a7cfdb7f4821c4224541c63496318cf683d4d5efd382ac87b48f221437be"
+    ],
+    "other_systemsstartup": [
+      "8184476c70795d310549bd2758e189bd1001b437848b0a11fb70cc6f6839ef05"
+    ],
+    "overheat_loop": [
+      "e2a1bd108395c55997c93e9673135a9bc0c95745cbaf4ecb4833b6684f8883a1"
+    ],
+    "overheat_preview": [
+      "b8a5648ed313e069c34d98727b0c06dd99fe3ae1fe0d5dca4567f39aab7b1d1f"
+    ],
+    "ship_cargo_transfer": [
+      "8b14b9927d7748a0bced1495c7c29af327882fd0de746f936d48041ce4396c44"
+    ],
+    "ship_launch_limpet": [
+      "c4e380c6845b36f9e2fd32dbc2c379d3be020bfb3bbd2425071c1147ab31334a"
+    ],
+    "ship_repair_limpet": [
+      "0cb5210675542f16b06a00dfb5af58adb9e7f2dd6ce72cfcd99a8e6c97215b20"
+    ],
+    "ship_scan_complete": [
+      "a82d9875fb46bd9429b0ad9eaa1c9067678fcd311e215ee9cd090d9e51336866"
+    ],
+    "ship_synthesis": [
+      "0cc8820a46d6c073190854b4af47489d66d97c36061728a87441b08fbe9ccde7"
+    ],
+    "srv_destroyed": [
+      "3372efade9b6bc52a07cc46fb7b34861d534b27d870863c073382d051aea9a24"
+    ],
+    "srv_dock": [
+      "7270956e68cee74b8b817eeafd6d6c7169b990898eac6638366502c0d3ec9317"
+    ],
+    "srv_handbrake_off": [
+      "f50254e7654d7bb152837a833a1326f02c9713348ac53df166ef17938dae62aa"
+    ],
+    "srv_handbrake_on": [
+      "b17a4f970e94d0f31b8277ef27790bc403b1f6a8f4a0f300e3f2ccb25287475b"
+    ],
+    "srv_launch": [
+      "09bc8b100bc0c1d9812dee7a82472ea84340d036f510f670e252045f5b395ff6"
+    ],
+    "station_refuel": [
+      "4890ac56135003435ca060c91d0bc3aedef7860947015de1c5c61eb28f840d5d"
+    ],
+    "station_refuel_partial": [
+      "aaeaa51873e51e7cfbd0a1f1b0a88dff229a3db5d4bbe5c7146b27fdcb0bd5d2"
+    ],
+    "station_repair_all": [
+      "dc1ee1fd8d0024e2f926b88fd86bd070c33ea5125b94bd8c1d42e5cfb233dbf9"
+    ],
+    "station_repair_selected": [
+      "5ae64c6cf8e39d0f446d9b87472678350f90bf9722fed09e8c1d96473e10f0a8"
+    ],
+    "station_restock_ammo": [
+      "81277f713b70d887bffafbbef7f436ea278c0520828f855245dfcf521343201d"
+    ],
+    "station_restockvehicle": [
+      "82bb0570e2429b3b668a12566f5f9753fa9b43584e16093a79390e7dcb3bb056"
+    ],
+    "status_hardpointsdeployed": [
+      "caf1d1c570dd157410c2a86bc752ca8a1cb8215e5ca2c8931223390819611a29"
+    ],
+    "status_hardpointsretracted": [
+      "6871db1e08e4e2202aca27e0bf662620cbd8cf284d9b29309f529f4966d3c5b1"
+    ],
+    "status_landinggeardeployed": [
+      "a14282f4405de236ecedd60735626da207789a60b3e42d5e7b87066b0062c72d"
+    ],
+    "status_landinggearretracted": [
+      "5a37657b7491484b5646f729c81303ba9376c76d9a30223deebe8c430184f87e"
+    ],
+    "status_shieldsdown": [
+      "48f6fc34ec569c539ce020b103da7df400e5d30faaf2a277a9b1b7908ee66b88"
+    ],
+    "status_shieldsup": [
+      "3974163cbc17bf2b44643c5e328a55c0e681d97d785ed8614474fe30b8d250fb"
+    ],
+    "trade_ejectcargo": [
+      "89dca61aaa701151bb6304f2f53d7685df38250efa80663e687a99abee527a58"
+    ],
+    "travel_approachbody": [
+      "9bcbd1ef3716cbc654987fc14d282a6dec1bd929c3667c0e98e9d2bfd8f5e51e"
+    ],
+    "travel_docked": [
+      "709379af23c2c4460e50b9c7b7440e8410d8f7cda8e2e4f53bc9b73788e74528"
+    ],
+    "travel_fsdengage": [
+      "414778a5a9b63e3b369e85c10e7a582e571a389ead702bd39d039be46e29a324"
+    ],
+    "travel_fsdjump": [
+      "be138e9e0a6139a3fbf754b1e056d4b31f19c777fc6ad00dcabcbd60bbfa82d9"
+    ],
+    "travel_leave_body_1": [
+      "b6a5e18528e9e57f7413f32b6ade5a164a765c19d03dc3955be9dd8662f14000"
+    ],
+    "travel_leave_body_2": [
+      "d1dd28c7a1dfb56ff3a3b940634e25abba1a147b323a4f7de4ee577fc225b3e9"
+    ],
+    "travel_leave_body_3": [
+      "87321946ca1eb2c200aa15b83fd6cbe9718f3c634eaffe65cc7cdf03aa3585b4"
+    ],
+    "travel_liftoff": [
+      "0edc79023006a511428976457312c3980f7292fe85e652204724450add7d6277"
+    ],
+    "travel_touchdown": [
+      "b28a5a8d49ed9bf1cf6cd597bb746ae08246bc208ecae9e98169edd840baa6a3"
+    ],
+    "travel_undocked": [
+      "4b0731b3cb30883b0ecbc3dfee8d228dd6307089c57e9f9582820d0c62945edb"
+    ],
+    "under_attack_hull": [
+      "afeca189b536997cd028e3e97a2c9ac9e6d37e1c0a85a9b9fd7b6e9e05d235e9"
+    ],
+    "under_attack_shields": [
+      "6f06875f830b83031ace01f9e5e14fd5b1547dd2b978fc5348f4ca2e7a8b1acc"
+    ]
+  }
+}

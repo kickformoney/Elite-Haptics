@@ -1,0 +1,1 @@
+.\.venv\Scripts\python.exe generate_effect_migrations.py --previous-git-ref v1.0.0 --current effects.default.json --to-version 1.0.1 --output effect_migrations.json --check

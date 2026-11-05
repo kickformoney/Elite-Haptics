@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "catalog_version": "1.0.1",
+  "migrations": [
+    {
+      "id": "1.0.1-ship-synthesis-strength",
+      "effect": "ship_synthesis",
+      "effect_name": "Synthesis Complete",
+      "strength_factor": 0.45454545,
+      "output_multiplier": 2.2,
+      "reason": "Default effect redesigned and strength increased by 2.2x"
+    },
+    {
+      "id": "1.0.1-ship-scanned-strength",
+      "effect": "ship_scan_complete",
+      "effect_name": "Ship Scanned",
+      "strength_factor": 0.76923077,
+      "output_multiplier": 1.3,
+      "reason": "Default effect strength increased by 1.3x"
+    },
+    {
+      "id": "1.0.1-fighter-launch-strength",
+      "effect": "fighter_launch",
+      "effect_name": "Fighter Launch",
+      "strength_factor": 1.42857143,
+      "output_multiplier": 0.7,
+      "reason": "Default effect strength decreased to 0.7x"
+    },
+    {
+      "id": "1.0.1-fighter-dock-strength",
+      "effect": "fighter_dock",
+      "effect_name": "Fighter Dock",
+      "strength_factor": 1.25,
+      "output_multiplier": 0.8,
+      "reason": "Default effect strength decreased to 0.8x"
+    },
+    {
+      "id": "1.0.1-reservoir-replenished-strength",
+      "effect": "fuel_reservoir_transfer",
+      "effect_name": "Reservoir Replenished",
+      "strength_factor": 1.25,
+      "output_multiplier": 0.8,
+      "reason": "Default effect strength decreased to 0.8x"
+    },
+    {
+      "id": "1.0.1-low-oxygen-strength",
+      "effect": "onfoot_low_oxygen",
+      "effect_name": "Low Oxygen",
+      "strength_factor": 0.83333333,
+      "output_multiplier": 1.2,
+      "reason": "Default effect strength increased by 1.2x"
+    },
+    {
+      "id": "1.0.1-cargo-transfer-strength",
+      "effect": "ship_cargo_transfer",
+      "effect_name": "Cargo Transfer",
+      "strength_factor": 2.0,
+      "output_multiplier": 0.5,
+      "reason": "Default effect strength decreased to 0.5x"
+    },
+    {
+      "id": "1.0.1-low-health-strength-2",
+      "effect": "onfoot_low_health",
+      "effect_name": "Low Health",
+      "strength_factor": 0.8,
+      "output_multiplier": 1.25,
+      "reason": "Default effect strength increased by 1.25x"
+    },
+    {
+      "id": "1.0.1-synthesis-strength-2",
+      "effect": "ship_synthesis",
+      "effect_name": "Synthesis",
+      "strength_factor": 1.11111111,
+      "output_multiplier": 0.9,
+      "reason": "Default effect strength decreased to 0.9x"
+    },
+    {
+      "id": "1.0.1-handbrake-released-strength",
+      "effect": "srv_handbrake_off",
+      "effect_name": "Handbrake - Released",
+      "strength_factor": 0.4,
+      "output_multiplier": 2.5,
+      "reason": "Default effect strength increased by 2.5x"
+    },
+    {
+      "id": "1.0.1-srv-deployed-strength",
+      "effect": "srv_launch",
+      "effect_name": "SRV Deployed",
+      "strength_factor": 0.66666667,
+      "output_multiplier": 1.5,
+      "reason": "Default effect strength increased by 1.5x"
+    },
+    {
+      "id": "1.0.1-srv-docked-strength",
+      "effect": "srv_dock",
+      "effect_name": "SRV Docked",
+      "strength_factor": 0.8,
+      "output_multiplier": 1.25,
+      "reason": "Default effect strength increased by 1.25x"
+    },
+    {
+      "id": "1.0.1-refuel-strength",
+      "effect": "station_refuel",
+      "effect_name": "Refuel",
+      "strength_factor": 0.95238095,
+      "output_multiplier": 1.05,
+      "reason": "Default effect strength increased by 1.05x"
+    },
+    {
+      "id": "1.0.1-refuel-10-strength",
+      "effect": "station_refuel_partial",
+      "effect_name": "Refuel 10%",
+      "strength_factor": 0.95238095,
+      "output_multiplier": 1.05,
+      "reason": "Default effect strength increased by 1.05x"
+    },
+    {
+      "id": "1.0.1-docking-clamps-released-strength",
+      "effect": "travel_undocked",
+      "effect_name": "Docking Clamps Released",
+      "strength_factor": 0.83333333,
+      "output_multiplier": 1.2,
+      "reason": "Default effect strength increased by 1.2x"
+    },
+    {
+      "id": "1.0.1-hyperspace-jump-strength",
+      "effect": "travel_fsdjump",
+      "effect_name": "Hyperspace Jump",
+      "strength_factor": 1.81818182,
+      "output_multiplier": 0.55,
+      "reason": "Default effect strength decreased to 0.55x"
+    },
+    {
+      "id": "1.0.1-mass-lock-strength",
+      "effect": "mass_lock",
+      "effect_name": "Mass Lock",
+      "strength_factor": 0.90909091,
+      "output_multiplier": 1.1,
+      "reason": "Default effect strength increased by 1.1x"
+    },
+    {
+      "id": "1.0.1-liftoff-strength",
+      "effect": "travel_liftoff",
+      "effect_name": "Liftoff",
+      "strength_factor": 0.76923077,
+      "output_multiplier": 1.3,
+      "reason": "Default effect strength increased by 1.3x"
+    },
+    {
+      "id": "1.0.1-leave-body-1-strength",
+      "effect": "travel_leave_body_1",
+      "effect_name": "Orbital Cruise - Leave Body",
+      "strength_factor": 0.76923077,
+      "output_multiplier": 1.3,
+      "reason": "Default effect strength increased by 1.3x"
+    },
+    {
+      "id": "1.0.1-glide-mode-strength",
+      "effect": "glide_loop",
+      "effect_name": "Glide Mode",
+      "strength_factor": 0.43478261,
+      "output_multiplier": 2.3,
+      "reason": "Default effect strength increased by 2.3x and continuous feedback smoothed"
+    }
+  ]
+}
