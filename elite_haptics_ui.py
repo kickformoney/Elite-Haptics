@@ -454,8 +454,8 @@ class EffectEditorDialog(tk.Toplevel):
         self.effect_id = effect_id
         self.title("Edit custom effect")
         self.transient(manager)
-        self.geometry("920x780")
-        self.minsize(820, 700)
+        self.geometry("1100x780")
+        self.minsize(1100, 700)
         self.name_var = tk.StringVar(value=definition.get("name", effect_id))
         self.category_var = tk.StringVar(value=definition.get("category", "Custom"))
         self.description_var = tk.StringVar(value=definition.get("description", ""))
@@ -471,6 +471,8 @@ class EffectEditorDialog(tk.Toplevel):
         self.playhead_job = None
         frame = ttk.Frame(self, padding=16)
         frame.pack(fill="both", expand=True)
+        frame.columnconfigure(0, weight=1)
+        frame.columnconfigure(1, weight=1)
         ttk.Label(frame, text=f"Effect ID: {effect_id}", style="Muted.TLabel").grid(
             row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
         ttk.Label(frame, text="Name").grid(row=1, column=0, sticky="w")
@@ -489,10 +491,11 @@ class EffectEditorDialog(tk.Toplevel):
         ttk.Button(toolbar, text="Stop", command=self.stop_playback).pack(side="left", padx=(6, 0))
         ttk.Button(toolbar, text="Split step", command=self.split_step).pack(side="left", padx=(16, 0))
         ttk.Button(toolbar, text="Merge next", command=self.merge_next).pack(side="left", padx=(6, 0))
+        ttk.Button(toolbar, text="Edit JSON…", command=self.edit_json).pack(side="left", padx=(6, 0))
         ttk.Label(toolbar, text="Click a section; drag points or boundaries to adjust it.",
                   style="Muted.TLabel").pack(side="right")
         palette = manager.owner.palette
-        canvas_options = dict(width=850, height=145, background=palette["field"],
+        canvas_options = dict(width=900, height=145, background=palette["field"],
                               highlightthickness=1, highlightbackground=palette["border"])
         self.frequency_canvas = tk.Canvas(frame, **canvas_options)
         self.frequency_canvas.grid(row=6, column=0, columnspan=2, sticky="ew")
@@ -600,9 +603,9 @@ class EffectEditorDialog(tk.Toplevel):
                     start_value = end_value = float(step.get("volume", 1.0))
                     y1 = y2 = 14 + (1 - self.clamp(start_value, 0, 1)) * (height - 28)
                 canvas.create_line(x1, y1, x2, y2, fill=palette["accent"], width=3)
-                canvas.create_oval(x1 - 4, y1 - 4, x1 + 4, y1 + 4,
+                canvas.create_oval(x1 - 6, y1 - 6, x1 + 6, y1 + 6,
                                    fill=palette["accent"], outline="")
-                canvas.create_oval(x2 - 4, y2 - 4, x2 + 4, y2 + 4,
+                canvas.create_oval(x2 - 6, y2 - 6, x2 + 6, y2 + 6,
                                    fill=palette["accent"], outline="")
             canvas.create_line(width - 14, 0, width - 14, height, fill=palette["border"])
             play_x = self.x_for_time(canvas, self.playhead_time)
@@ -618,11 +621,28 @@ class EffectEditorDialog(tk.Toplevel):
     def timeline_press(self, event, lane):
         value = self.time_for_x(event.widget, event.x)
         ranges = self.step_ranges()
-        for boundary in range(1, len(ranges)):
-            if abs(event.x - self.x_for_time(event.widget, ranges[boundary][0])) <= 7:
-                self.drag = ("boundary", boundary, ranges[boundary][0])
-                return
         self.selected_index = self.index_at_time(value)
+        point_hit = False
+        step = self.steps[self.selected_index]
+        if step.get("type") != "wait":
+            start, end = ranges[self.selected_index]
+            if lane == "frequency":
+                values = (float(step.get("start_frequency", step.get("frequency", 40))),
+                          float(step.get("end_frequency", step.get("frequency", 40))))
+                ys = [14 + (120 - self.clamp(item, 20, 120)) / 100 *
+                      (event.widget.winfo_height() - 28) for item in values]
+            else:
+                y = 14 + (1 - self.clamp(float(step.get("volume", 1)), 0, 1)) * (
+                    event.widget.winfo_height() - 28)
+                ys = (y, y)
+            xs = (self.x_for_time(event.widget, start), self.x_for_time(event.widget, end))
+            point_hit = any(abs(event.x - x) <= 12 and abs(event.y - y) <= 12
+                            for x, y in zip(xs, ys))
+        if not point_hit:
+            for boundary in range(1, len(ranges)):
+                if abs(event.x - self.x_for_time(event.widget, ranges[boundary][0])) <= 7:
+                    self.drag = ("boundary", boundary, ranges[boundary][0])
+                    return
         self.drag = (lane, self.selected_index, value)
         self.load_inspector()
         self.draw_timeline()
@@ -806,6 +826,70 @@ class EffectEditorDialog(tk.Toplevel):
         self.playhead_time = 0.0
         self.play_button.configure(text="Play")
         self.draw_timeline()
+
+    def edit_json(self):
+        dialog = tk.Toplevel(self)
+        dialog.title("Edit sequence JSON")
+        dialog.transient(self)
+        dialog.geometry("1100x730")
+        frame = ttk.Frame(dialog, padding=14)
+        frame.pack(fill="both", expand=True)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(2, weight=1)
+        ttk.Label(frame, text="Sequence steps", style="Title.TLabel").grid(
+            row=0, column=0, sticky="w")
+        ttk.Label(frame, text="Changes are validated before returning to the visual editor.",
+                  style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(2, 8))
+        palette = self.manager.owner.palette
+        text = tk.Text(frame, wrap="none", undo=True, background=palette["field"],
+                       foreground=palette["foreground"],
+                       insertbackground=palette["foreground"],
+                       selectbackground=palette["select"])
+        text.grid(row=2, column=0, sticky="nsew")
+        text.insert("1.0", json.dumps(self.steps, indent=2))
+        actions = ttk.Frame(frame)
+        actions.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+        status_var = tk.StringVar(
+            value="Apply updates the timeline. Save effect writes the effect and closes both windows.")
+        ttk.Label(actions, textvariable=status_var, style="Muted.TLabel").pack(side="left")
+
+        def accept_json(close_dialog=True):
+            try:
+                steps = validate_sequence_steps(json.loads(text.get("1.0", "end")))
+            except (json.JSONDecodeError, ValueError) as exc:
+                messagebox.showwarning("Invalid sequence JSON", str(exc), parent=dialog)
+                return False
+            self.steps = json.loads(json.dumps(steps))
+            self.selected_index = min(self.selected_index, len(self.steps) - 1)
+            self.load_inspector()
+            self.draw_timeline()
+            if close_dialog:
+                dialog.destroy()
+            else:
+                status_var.set("JSON applied to the timeline. The effect has not been saved yet.")
+            return True
+
+        def apply_json(_event=None):
+            accept_json(close_dialog=True)
+            return "break"
+
+        def save_json(_event=None):
+            if not accept_json(close_dialog=False):
+                return "break"
+            dialog.destroy()
+            self.save()
+            return "break"
+
+        ttk.Button(actions, text="Cancel", command=dialog.destroy).pack(side="right")
+        ttk.Button(actions, text="Save effect", command=save_json).pack(side="right", padx=(0, 8))
+        ttk.Button(actions, text="Apply to timeline", command=apply_json).pack(
+            side="right", padx=(0, 8))
+        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+        dialog.bind("<Control-Return>", save_json)
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+        dialog.grab_set()
+        self.manager.owner.center_dialog(dialog)
+        text.focus_set()
 
     def close(self):
         self.stop_playback()
