@@ -19,7 +19,7 @@ import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from effect_recorder import (append_gesture, effect_definition, pad_values,
+from effect_recorder import (append_gesture, effect_definition, make_step, pad_values,
                              trim_silence, unique_effect_id, validate_sequence_steps)
 
 
@@ -454,10 +454,21 @@ class EffectEditorDialog(tk.Toplevel):
         self.effect_id = effect_id
         self.title("Edit custom effect")
         self.transient(manager)
-        self.resizable(False, False)
+        self.geometry("920x780")
+        self.minsize(820, 700)
         self.name_var = tk.StringVar(value=definition.get("name", effect_id))
         self.category_var = tk.StringVar(value=definition.get("category", "Custom"))
         self.description_var = tk.StringVar(value=definition.get("description", ""))
+        self.steps = json.loads(json.dumps(definition.get("steps", [])))
+        self.selected_index = 0
+        self.drag = None
+        self.playing = False
+        self.paused = False
+        self.playback_stop = threading.Event()
+        self.playback_finished = False
+        self.playback_index = 0
+        self.playhead_time = 0.0
+        self.playhead_job = None
         frame = ttk.Frame(self, padding=16)
         frame.pack(fill="both", expand=True)
         ttk.Label(frame, text=f"Effect ID: {effect_id}", style="Muted.TLabel").grid(
@@ -471,26 +482,337 @@ class EffectEditorDialog(tk.Toplevel):
         ttk.Label(frame, text="Description").grid(row=3, column=0, columnspan=2, sticky="w")
         ttk.Entry(frame, textvariable=self.description_var).grid(
             row=4, column=0, columnspan=2, sticky="ew", pady=(3, 10))
-        ttk.Label(frame, text="Sequence steps (JSON)").grid(
-            row=5, column=0, columnspan=2, sticky="w")
-        self.steps_text = tk.Text(frame, width=76, height=18, wrap="none", undo=True,
-                                  background=manager.owner.palette["field"],
-                                  foreground=manager.owner.palette["foreground"],
-                                  insertbackground=manager.owner.palette["foreground"],
-                                  selectbackground=manager.owner.palette["select"])
-        self.steps_text.grid(row=6, column=0, columnspan=2, pady=(3, 12))
-        self.steps_text.insert("1.0", json.dumps(definition.get("steps", []), indent=2))
+        toolbar = ttk.Frame(frame)
+        toolbar.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(2, 6))
+        self.play_button = ttk.Button(toolbar, text="Play", command=self.toggle_playback)
+        self.play_button.pack(side="left")
+        ttk.Button(toolbar, text="Stop", command=self.stop_playback).pack(side="left", padx=(6, 0))
+        ttk.Button(toolbar, text="Split step", command=self.split_step).pack(side="left", padx=(16, 0))
+        ttk.Button(toolbar, text="Merge next", command=self.merge_next).pack(side="left", padx=(6, 0))
+        ttk.Label(toolbar, text="Click a section; drag points or boundaries to adjust it.",
+                  style="Muted.TLabel").pack(side="right")
+        palette = manager.owner.palette
+        canvas_options = dict(width=850, height=145, background=palette["field"],
+                              highlightthickness=1, highlightbackground=palette["border"])
+        self.frequency_canvas = tk.Canvas(frame, **canvas_options)
+        self.frequency_canvas.grid(row=6, column=0, columnspan=2, sticky="ew")
+        self.intensity_canvas = tk.Canvas(frame, **canvas_options)
+        self.intensity_canvas.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(6, 10))
+        for lane, canvas in (("frequency", self.frequency_canvas),
+                             ("intensity", self.intensity_canvas)):
+            canvas.bind("<ButtonPress-1>", lambda event, value=lane: self.timeline_press(event, value))
+            canvas.bind("<B1-Motion>", lambda event, value=lane: self.timeline_drag(event, value))
+            canvas.bind("<ButtonRelease-1>", lambda _event: self.timeline_release())
+            canvas.bind("<Configure>", lambda _event: self.draw_timeline())
+
+        inspector = ttk.LabelFrame(frame, text="Selected step", padding=8)
+        inspector.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(0, 12))
+        self.step_type_var = tk.StringVar()
+        self.duration_var = tk.StringVar()
+        self.start_frequency_var = tk.StringVar()
+        self.end_frequency_var = tk.StringVar()
+        self.volume_var = tk.StringVar()
+        fields = (("Type", self.step_type_var), ("Duration (s)", self.duration_var),
+                  ("Start / tone Hz", self.start_frequency_var),
+                  ("End Hz", self.end_frequency_var), ("Strength", self.volume_var))
+        for column, (label, variable) in enumerate(fields):
+            ttk.Label(inspector, text=label).grid(row=0, column=column, sticky="w", padx=4)
+            if column == 0:
+                widget = ttk.Combobox(inspector, textvariable=variable,
+                                      values=("sine", "sweep", "wait"), state="readonly", width=10)
+            else:
+                widget = ttk.Entry(inspector, textvariable=variable, width=14)
+            widget.grid(row=1, column=column, sticky="ew", padx=4, pady=(2, 0))
+            inspector.columnconfigure(column, weight=1)
+        ttk.Button(inspector, text="Apply", command=self.apply_inspector).grid(
+            row=1, column=len(fields), padx=(8, 4))
         actions = ttk.Frame(frame)
-        actions.grid(row=7, column=0, columnspan=2, sticky="e")
-        ttk.Button(actions, text="Cancel", command=self.destroy).pack(side="left")
+        actions.grid(row=9, column=0, columnspan=2, sticky="e")
+        ttk.Button(actions, text="Cancel", command=self.close).pack(side="left")
         ttk.Button(actions, text="Save changes", command=self.save).pack(side="left", padx=(8, 0))
-        manager.owner.bind_dialog_shortcuts(self, self.save, self.destroy)
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        manager.owner.bind_dialog_shortcuts(self, self.save, self.close)
+        self.protocol("WM_DELETE_WINDOW", self.close)
         self.grab_set()
         manager.owner.center_dialog(self)
+        self.load_inspector()
+        self.draw_timeline()
         self.name_entry.focus_set()
 
+    def total_duration(self):
+        return max(0.001, sum(float(step.get("duration", 0)) for step in self.steps))
+
+    def step_ranges(self):
+        ranges, current = [], 0.0
+        for step in self.steps:
+            end = current + float(step.get("duration", 0))
+            ranges.append((current, end))
+            current = end
+        return ranges
+
+    def x_for_time(self, canvas, value):
+        return 34 + value / self.total_duration() * max(1, canvas.winfo_width() - 48)
+
+    def time_for_x(self, canvas, value):
+        width = max(1, canvas.winfo_width() - 48)
+        return min(self.total_duration(), max(0.0, (value - 34) / width * self.total_duration()))
+
+    @staticmethod
+    def clamp(value, low, high):
+        return min(high, max(low, value))
+
+    def draw_timeline(self):
+        if not self.steps:
+            return
+        palette = self.manager.owner.palette
+        ranges = self.step_ranges()
+        for lane, canvas in (("frequency", self.frequency_canvas),
+                             ("intensity", self.intensity_canvas)):
+            canvas.delete("all")
+            width, height = canvas.winfo_width(), canvas.winfo_height()
+            canvas.create_text(8, 8, anchor="nw", text=("FREQUENCY" if lane == "frequency"
+                                                        else "STRENGTH"),
+                               fill=palette["muted"], font=("Segoe UI Semibold", 8))
+            canvas.create_text(30, 18, anchor="e", text=("120" if lane == "frequency" else "100%"),
+                               fill=palette["muted"], font=("Segoe UI", 8))
+            canvas.create_text(30, height - 15, anchor="e",
+                               text=("20" if lane == "frequency" else "0%"),
+                               fill=palette["muted"], font=("Segoe UI", 8))
+            for tick in range(5):
+                tick_time = self.total_duration() * tick / 4
+                tick_x = self.x_for_time(canvas, tick_time)
+                canvas.create_text(tick_x, height - 2, anchor="s", text=f"{tick_time:.2f}s",
+                                   fill=palette["muted"], font=("Segoe UI", 7))
+            for index, (step, (start, end)) in enumerate(zip(self.steps, ranges)):
+                x1, x2 = self.x_for_time(canvas, start), self.x_for_time(canvas, end)
+                if index == self.selected_index:
+                    canvas.create_rectangle(x1, 0, x2, height, fill=palette["select"], outline="")
+                canvas.create_line(x1, 0, x1, height, fill=palette["border"])
+                if step.get("type") == "wait":
+                    canvas.create_text((x1 + x2) / 2, height / 2, text="WAIT",
+                                       fill=palette["muted"])
+                    continue
+                if lane == "frequency":
+                    start_value = float(step.get("start_frequency", step.get("frequency", 40)))
+                    end_value = float(step.get("end_frequency", start_value))
+                    y1 = 14 + (120 - self.clamp(start_value, 20, 120)) / 100 * (height - 28)
+                    y2 = 14 + (120 - self.clamp(end_value, 20, 120)) / 100 * (height - 28)
+                else:
+                    start_value = end_value = float(step.get("volume", 1.0))
+                    y1 = y2 = 14 + (1 - self.clamp(start_value, 0, 1)) * (height - 28)
+                canvas.create_line(x1, y1, x2, y2, fill=palette["accent"], width=3)
+                canvas.create_oval(x1 - 4, y1 - 4, x1 + 4, y1 + 4,
+                                   fill=palette["accent"], outline="")
+                canvas.create_oval(x2 - 4, y2 - 4, x2 + 4, y2 + 4,
+                                   fill=palette["accent"], outline="")
+            canvas.create_line(width - 14, 0, width - 14, height, fill=palette["border"])
+            play_x = self.x_for_time(canvas, self.playhead_time)
+            canvas.create_line(play_x, 0, play_x, height, fill=palette["special"], width=2,
+                               tags="playhead")
+
+    def index_at_time(self, value):
+        for index, (start, end) in enumerate(self.step_ranges()):
+            if start <= value <= end or index == len(self.steps) - 1:
+                return index
+        return 0
+
+    def timeline_press(self, event, lane):
+        value = self.time_for_x(event.widget, event.x)
+        ranges = self.step_ranges()
+        for boundary in range(1, len(ranges)):
+            if abs(event.x - self.x_for_time(event.widget, ranges[boundary][0])) <= 7:
+                self.drag = ("boundary", boundary, ranges[boundary][0])
+                return
+        self.selected_index = self.index_at_time(value)
+        self.drag = (lane, self.selected_index, value)
+        self.load_inspector()
+        self.draw_timeline()
+
+    def timeline_drag(self, event, lane):
+        if not self.drag:
+            return
+        if self.drag[0] == "boundary":
+            boundary = self.drag[1]
+            ranges = self.step_ranges()
+            combined = float(self.steps[boundary - 1]["duration"]) + float(
+                self.steps[boundary]["duration"])
+            start = ranges[boundary - 1][0]
+            left = self.clamp(self.time_for_x(event.widget, event.x) - start, 0.03,
+                              combined - 0.03)
+            self.steps[boundary - 1]["duration"] = round(left, 3)
+            self.steps[boundary]["duration"] = round(combined - left, 3)
+            self.load_inspector()
+            self.draw_timeline()
+            return
+        self.adjust_point(event, lane)
+
+    def timeline_release(self):
+        self.drag = None
+
+    def adjust_point(self, event, lane):
+        step = self.steps[self.selected_index]
+        if step.get("type") == "wait":
+            return
+        height = event.widget.winfo_height()
+        if lane == "frequency":
+            value = round(self.clamp(120 - (event.y - 14) / max(1, height - 28) * 100,
+                                     20, 120), 1)
+            if step.get("type") == "sweep":
+                start, end = self.step_ranges()[self.selected_index]
+                midpoint = self.x_for_time(event.widget, (start + end) / 2)
+                step["start_frequency" if event.x <= midpoint else "end_frequency"] = value
+            else:
+                step["frequency"] = value
+        else:
+            step["volume"] = round(self.clamp(1 - (event.y - 14) / max(1, height - 28), 0, 1), 2)
+        self.load_inspector()
+        self.draw_timeline()
+
+    def load_inspector(self):
+        if not self.steps:
+            return
+        step = self.steps[self.selected_index]
+        step_type = step.get("type", "sine")
+        self.step_type_var.set(step_type)
+        self.duration_var.set(str(step.get("duration", 0.1)))
+        self.start_frequency_var.set("" if step_type == "wait" else str(
+            step.get("start_frequency", step.get("frequency", 40))))
+        self.end_frequency_var.set("" if step_type != "sweep" else str(
+            step.get("end_frequency", 40)))
+        self.volume_var.set("" if step_type == "wait" else str(step.get("volume", 1.0)))
+
+    def apply_inspector(self):
+        try:
+            step_type = self.step_type_var.get()
+            duration = round(max(0.03, float(self.duration_var.get())), 3)
+            if step_type == "wait":
+                step = {"type": "wait", "duration": duration}
+            else:
+                start = self.clamp(float(self.start_frequency_var.get()), 20, 120)
+                volume = self.clamp(float(self.volume_var.get()), 0, 1)
+                if step_type == "sweep":
+                    step = {"type": "sweep", "start_frequency": round(start, 1),
+                            "end_frequency": round(self.clamp(
+                                float(self.end_frequency_var.get()), 20, 120), 1),
+                            "duration": duration, "volume": round(volume, 2)}
+                else:
+                    step = {"type": "sine", "frequency": round(start, 1),
+                            "duration": duration, "volume": round(volume, 2)}
+                    if duration < 0.05:
+                        step["fade"] = False
+            self.steps[self.selected_index] = step
+            validate_sequence_steps(self.steps)
+        except (TypeError, ValueError) as exc:
+            messagebox.showwarning("Invalid step", str(exc), parent=self)
+            return
+        self.load_inspector()
+        self.draw_timeline()
+
+    def split_step(self):
+        step = self.steps[self.selected_index]
+        duration = max(0.06, float(step["duration"]))
+        first, second = dict(step), dict(step)
+        first["duration"] = second["duration"] = round(duration / 2, 3)
+        if step.get("type") == "sweep":
+            middle = (float(step["start_frequency"]) + float(step["end_frequency"])) / 2
+            first["end_frequency"] = round(middle, 1)
+            second["start_frequency"] = round(middle, 1)
+        self.steps[self.selected_index:self.selected_index + 1] = [first, second]
+        self.draw_timeline()
+
+    def merge_next(self):
+        if self.selected_index >= len(self.steps) - 1:
+            return
+        first, second = self.steps[self.selected_index:self.selected_index + 2]
+        duration = round(float(first["duration"]) + float(second["duration"]), 3)
+        if first.get("type") == second.get("type") == "wait":
+            merged = {"type": "wait", "duration": duration}
+        elif first.get("type") != "wait" and second.get("type") != "wait":
+            start = float(first.get("start_frequency", first.get("frequency", 40)))
+            end = float(second.get("end_frequency", second.get("frequency", 40)))
+            volume = (float(first.get("volume", 1)) * float(first["duration"]) +
+                      float(second.get("volume", 1)) * float(second["duration"])) / duration
+            merged = make_step(start, end, duration, volume, threshold=0.02)
+        else:
+            messagebox.showwarning("Cannot merge", "A wait can only be merged with another wait.",
+                                   parent=self)
+            return
+        self.steps[self.selected_index:self.selected_index + 2] = [merged]
+        self.load_inspector()
+        self.draw_timeline()
+
+    def toggle_playback(self):
+        if self.playing:
+            self.paused = not self.paused
+            self.play_button.configure(text="Resume" if self.paused else "Pause")
+            if self.paused:
+                engine.interrupt_playback()
+            return
+        self.playing, self.paused = True, False
+        self.playback_stop.clear()
+        self.playback_finished = False
+        self.playback_index = 0
+        self.playhead_time = 0.0
+        self.play_button.configure(text="Pause")
+        threading.Thread(target=self._play_steps, daemon=True).start()
+        self.playhead_job = self.after(30, self._playhead_tick)
+
+    def _play_steps(self):
+        elapsed = 0.0
+        for index, step in enumerate(self.steps):
+            if self.playback_stop.is_set():
+                return
+            self.playback_index = index
+            while self.paused and not self.playback_stop.wait(0.03):
+                pass
+            if self.playback_stop.is_set():
+                return
+            duration = float(step["duration"])
+            if step.get("type") != "wait":
+                engine.play(engine.render_recipe_step(step))
+            started = time.monotonic()
+            while time.monotonic() - started < duration:
+                if self.playback_stop.wait(0.02):
+                    return
+                if self.paused:
+                    engine.interrupt_playback()
+                    while self.paused and not self.playback_stop.wait(0.03):
+                        pass
+                    if self.playback_stop.is_set():
+                        return
+                    self.playhead_time = elapsed
+                    started = time.monotonic()
+                    if step.get("type") != "wait":
+                        engine.play(engine.render_recipe_step(step))
+                self.playhead_time = min(elapsed + time.monotonic() - started,
+                                         self.total_duration())
+            elapsed += duration
+        self.playback_finished = True
+
+    def _playhead_tick(self):
+        self.playhead_job = None
+        self.draw_timeline()
+        if self.playback_finished:
+            self.stop_playback()
+        elif self.playing:
+            self.playhead_job = self.after(30, self._playhead_tick)
+
+    def stop_playback(self):
+        self.playback_stop.set()
+        engine.interrupt_playback()
+        if self.playhead_job is not None:
+            self.after_cancel(self.playhead_job)
+            self.playhead_job = None
+        self.playing = self.paused = False
+        self.playhead_time = 0.0
+        self.play_button.configure(text="Play")
+        self.draw_timeline()
+
+    def close(self):
+        self.stop_playback()
+        self.destroy()
+
     def save(self):
+        self.stop_playback()
         try:
             name = self.name_var.get().strip()
             category = self.category_var.get().strip()
@@ -500,7 +822,7 @@ class EffectEditorDialog(tk.Toplevel):
             if conflict:
                 raise ValueError(
                     f"An effect named '{conflict[1]}' already exists. Choose a unique name.")
-            steps = validate_sequence_steps(json.loads(self.steps_text.get("1.0", "end")))
+            steps = validate_sequence_steps(self.steps)
             catalog = load_user_effect_catalog()
             definition = catalog["effects"].get(self.effect_id)
             if not isinstance(definition, dict):
