@@ -5,7 +5,7 @@
     "boost": {
       "name": "Boost",
       "category": "Travel",
-      "description": "A quick rising surge for engine boost.",
+      "description": "A quick rising surge for engine boost",
       "generator": "sequence",
       "steps": [
         {
@@ -20,7 +20,7 @@
     "ship_launch_limpet": {
       "name": "Limpet Launch",
       "category": "Ship",
-      "description": "A distant underside bay release followed by a soft launch impulse.",
+      "description": "A distant underside bay release followed by a soft launch impulse",
       "generator": "sequence",
       "steps": [
         {"type": "sweep", "start_frequency": 42, "end_frequency": 29, "duration": 0.45, "volume": 0.42},
@@ -31,7 +31,7 @@
     "fighter_launch": {
       "name": "Fighter Launch",
       "category": "Fighter",
-      "description": "A substantial bay mechanism, release, and accelerating departure for a ship-launched fighter.",
+      "description": "A substantial bay mechanism, release, and accelerating departure for a ship-launched fighter",
       "generator": "sequence",
       "steps": [
         {"type": "sine", "frequency": 31, "duration": 0.32, "volume": 0.35},
@@ -42,7 +42,7 @@
     "fighter_dock": {
       "name": "Fighter Dock",
       "category": "Fighter",
-      "description": "An approaching fighter, bay capture, and firm docking latch.",
+      "description": "An approaching fighter, bay capture, and firm docking latch",
       "generator": "sequence",
       "steps": [
         {"type": "sweep", "start_frequency": 65, "end_frequency": 34, "duration": 1.0, "volume": 0.32},
@@ -53,7 +53,7 @@
     "ship_repair_limpet": {
       "name": "Repair Limpet",
       "category": "Ship",
-      "description": "A soft irregular mechanical rumble when a repair limpet completes work on the ship.",
+      "description": "A soft irregular mechanical rumble when a repair limpet completes work on the ship",
       "generator": "sequence",
       "steps": [
         {"type": "layered", "frequencies": [32, 47], "duration": 1.6, "volume": 0.56},
@@ -63,7 +63,7 @@
     "fuel_reservoir_transfer": {
       "name": "Reservoir Replenished",
       "category": "Fuel",
-      "description": "A short low fuel-transfer hum between the main tank and active reservoir.",
+      "description": "A short low fuel-transfer hum between the main tank and active reservoir",
       "generator": "sequence",
       "steps": [
         {"type": "sine", "frequency": 54, "duration": 2.875, "volume": 0.176, "fade": 0.12},
@@ -170,25 +170,102 @@
         }
       ]
     },
-    "ship_synthesis": {
-      "name": "Synthesis",
+    "ship_synthesis_complete": {
+      "name": "Synthesis Complete",
       "category": "Ship",
-      "description": "Two fabrication bumps, a one-second machinery vibration, a quick confirmation bump, and a falling completion sweep.",
+      "description": "A steady rumble, cutoff, then power down",
       "generator": "sequence",
       "steps": [
-        {"type": "random_pulse", "frequency": 52, "count": 2, "pulse_duration": 0.1, "gap_duration": 0.12, "volume": 0.6732, "frequency_variance": 0.12},
-        {"type": "wait", "duration": 0.12},
-        {"type": "layered", "frequencies": [35, 48], "duration": 1.0, "volume": 0.6732},
-        {"type": "wait", "duration": 0.12},
-        {"type": "sine", "frequency": 42, "duration": 0.1, "volume": 0.8316},
-        {"type": "wait", "duration": 0.15},
-        {"type": "sweep", "start_frequency": 61, "end_frequency": 38, "duration": 0.45, "volume": 0.7128}
+        {
+          "type": "sweep",
+          "start_frequency": 32.7,
+          "end_frequency": 43.6,
+          "duration": 0.128,
+          "volume": 0.32
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 43.6,
+          "end_frequency": 40.2,
+          "duration": 0.138,
+          "volume": 0.35
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 41.2,
+          "end_frequency": 47.7,
+          "duration": 0.094,
+          "volume": 0.44
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 47.7,
+          "end_frequency": 50.8,
+          "duration": 0.156,
+          "volume": 0.34
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 50.8,
+          "end_frequency": 31.8,
+          "duration": 0.094,
+          "volume": 0.39
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 31.8,
+          "end_frequency": 44.4,
+          "duration": 0.174,
+          "volume": 0.29
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 46.9,
+          "end_frequency": 52.6,
+          "duration": 0.092,
+          "volume": 0.41
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 52.6,
+          "end_frequency": 46.5,
+          "duration": 0.093,
+          "volume": 0.42
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 46.5,
+          "end_frequency": 39.3,
+          "duration": 0.088,
+          "volume": 0.42
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 38.1,
+          "end_frequency": 21.7,
+          "duration": 0.12,
+          "volume": 0.46
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 22.5,
+          "end_frequency": 30.1,
+          "duration": 0.443,
+          "volume": 0.5
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 29.2,
+          "end_frequency": 27.6,
+          "duration": 0.305,
+          "volume": 0.43
+        }
       ]
     },
     "ship_cargo_transfer": {
       "name": "Cargo Transfer",
       "category": "Ship",
-      "description": "A hatch release, conveyor rumble, shifting cargo, and a firm closing latch.",
+      "description": "A hatch release, conveyor rumble, shifting cargo, and a firm closing latch",
       "generator": "sequence",
       "steps": [
         {"type": "sine", "frequency": 28, "duration": 0.18, "volume": 0.58},
@@ -203,7 +280,7 @@
     "interdiction_attempt": {
       "name": "Interdiction - Attempt",
       "category": "Combat",
-      "description": "A focused rising pull and release when the player completes an interdiction attempt.",
+      "description": "A focused rising pull and release when the player completes an interdiction attempt",
       "generator": "sequence",
       "steps": [
         {"type": "sweep", "start_frequency": 28, "end_frequency": 62, "duration": 1.8, "volume": 0.58},
@@ -214,7 +291,7 @@
     "carrier_fuel_deposit": {
       "name": "Carrier Fuel Deposit",
       "category": "Carrier",
-      "description": "A heavy but restrained transfer hum for depositing tritium into a fleet carrier.",
+      "description": "A heavy but restrained transfer hum for depositing tritium into a fleet carrier",
       "generator": "sequence",
       "steps": [
         {"type": "layered", "frequencies": [25, 34], "duration": 2.4, "volume": 0.3},
@@ -224,7 +301,7 @@
     "glide_loop": {
       "name": "Glide Mode Loop",
       "category": "Travel",
-      "description": "One smooth atmospheric-resistance segment repeated continuously while planetary glide is active.",
+      "description": "One smooth atmospheric-resistance segment repeated continuously while planetary glide is active",
       "selectable": false,
       "generator": "sequence",
       "steps": [
@@ -234,7 +311,7 @@
     "glide_preview": {
       "name": "Glide Mode Preview",
       "category": "Travel",
-      "description": "A soft steady atmospheric rumble for previewing planetary glide feedback.",
+      "description": "A soft steady atmospheric rumble for previewing planetary glide feedback",
       "generator": "sequence",
       "steps": [
         {"type": "layered", "frequencies": [27, 36], "duration": 2.0, "volume": 0.4048, "fade_out": false}
@@ -243,7 +320,7 @@
     "onfoot_low_oxygen": {
       "name": "Low Oxygen",
       "category": "On Foot",
-      "description": "Two small warning blips when suit oxygen becomes low.",
+      "description": "Two small warning blips when suit oxygen becomes low",
       "generator": "sequence",
       "steps": [
         {"type": "sine", "frequency": 62, "duration": 0.1, "volume": 0.96},
@@ -254,7 +331,7 @@
     "onfoot_low_health": {
       "name": "Low Health",
       "category": "On Foot",
-      "description": "Two clear notification pulses when on-foot health becomes low.",
+      "description": "Two clear notification pulses when on-foot health becomes low",
       "generator": "sequence",
       "steps": [
         {"type": "sine", "frequency": 58, "duration": 0.18, "volume": 0.75},
@@ -264,17 +341,50 @@
     },
     "onfoot_very_cold": {
       "name": "Very Cold",
-      "category": "On Foot",
-      "description": "Three crisp warning blips for extreme cold.",
+      "category": "Travel",
+      "description": "A shivering effect",
       "generator": "sequence",
       "steps": [
-        {"type": "random_pulse", "frequency": 67, "count": 3, "pulse_duration": 0.09, "gap_duration": 0.11, "volume": 0.8, "frequency_variance": 0.05}
+        {
+          "type": "sweep",
+          "start_frequency": 30.4,
+          "end_frequency": 33.8,
+          "duration": 0.156,
+          "volume": 0.15
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 33.8,
+          "end_frequency": 37.7,
+          "duration": 0.141,
+          "volume": 0.2
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 37.7,
+          "end_frequency": 31.9,
+          "duration": 0.25,
+          "volume": 0.23
+        },
+        {
+          "type": "sweep",
+          "start_frequency": 31.9,
+          "end_frequency": 34.2,
+          "duration": 0.25,
+          "volume": 0.26
+        },
+        {
+          "type": "sine",
+          "frequency": 35.0,
+          "duration": 0.297,
+          "volume": 0.3
+        }
       ]
     },
     "onfoot_very_hot": {
       "name": "Very Hot",
       "category": "On Foot",
-      "description": "Three deeper warning blips for extreme heat.",
+      "description": "Three deeper warning blips for extreme heat",
       "generator": "sequence",
       "steps": [
         {"type": "random_pulse", "frequency": 42, "count": 3, "pulse_duration": 0.12, "gap_duration": 0.1, "volume": 0.6, "frequency_variance": 0.05}
@@ -283,7 +393,7 @@
     "hit_hull": {
       "name": "Hull Hit",
       "category": "Combat",
-      "description": "A low, solid impact suitable for direct hull contact.",
+      "description": "A low, solid impact suitable for direct hull contact",
       "generator": "sequence",
       "steps": [
         {
@@ -307,7 +417,7 @@
     "hit_shield": {
       "name": "Shield Hit",
       "category": "Combat",
-      "description": "A short, higher-frequency impact suitable for shield contact.",
+      "description": "A short, higher-frequency impact suitable for shield contact",
       "generator": "sequence",
       "steps": [
         {
@@ -326,7 +436,7 @@
     "interdiction": {
       "name": "Interdiction",
       "category": "Combat",
-      "description": "Strong sustained turbulence while an interdiction is in progress.",
+      "description": "Strong sustained turbulence while an interdiction is in progress",
       "generator": "sequence",
       "steps": [
         {
@@ -340,7 +450,7 @@
     "escape_interdiction": {
       "name": "Interdiction - Escape",
       "category": "Combat",
-      "description": "A soft energy release and falling sweep for breaking free of an interdiction.",
+      "description": "A soft energy release and falling sweep for breaking free of an interdiction",
       "generator": "sequence",
       "steps": [
         {"type": "layered", "frequencies": [32, 46], "duration": 0.45, "volume": 0.45},
@@ -350,7 +460,7 @@
     "fuel_scoop_loop": {
       "name": "Fuel Scoop Loop",
       "category": "Fuel",
-      "description": "One short segment of the gentle vibration repeated while fuel scooping is active.",
+      "description": "One short segment of the gentle vibration repeated while fuel scooping is active",
       "selectable": false,
       "generator": "sequence",
       "steps": [
@@ -368,7 +478,7 @@
     "fuel_scoop_preview": {
       "name": "Fuel Scoop Preview",
       "category": "Fuel",
-      "description": "A steady, gentle engine-like vibration for previewing fuel scooping.",
+      "description": "A steady, gentle engine-like vibration for previewing fuel scooping",
       "generator": "sequence",
       "steps": [
         {
@@ -385,7 +495,7 @@
     "mass_lock": {
       "name": "Mass Lock",
       "category": "Travel",
-      "description": "A one-second rising gravity-pressure sweep for a mass-lock warning.",
+      "description": "A one-second rising gravity-pressure sweep for a mass-lock warning",
       "generator": "sequence",
       "steps": [
         {
@@ -400,7 +510,7 @@
     "overheat_loop": {
       "name": "Overheat Loop",
       "category": "Ship",
-      "description": "One short segment of the stronger warning vibration repeated while the ship is overheating.",
+      "description": "One short segment of the stronger warning vibration repeated while the ship is overheating",
       "selectable": false,
       "generator": "sequence",
       "steps": [
@@ -418,7 +528,7 @@
     "overheat_preview": {
       "name": "Overheat Preview",
       "category": "Ship",
-      "description": "A steady warning vibration stronger than the fuel-scooping effect.",
+      "description": "A steady warning vibration stronger than the fuel-scooping effect",
       "generator": "sequence",
       "steps": [
         {
@@ -435,7 +545,7 @@
     "srv_launch": {
       "name": "SRV Launch",
       "category": "SRV",
-      "description": "A descending mechanical movement followed by a release bump.",
+      "description": "A descending mechanical movement followed by a release bump",
       "generator": "sequence",
       "steps": [
         {
@@ -456,7 +566,7 @@
     "srv_dock": {
       "name": "SRV Dock",
       "category": "SRV",
-      "description": "A rising mechanical movement followed by a docking bump.",
+      "description": "A rising mechanical movement followed by a docking bump",
       "generator": "sequence",
       "steps": [
         {
@@ -477,7 +587,7 @@
     "srv_destroyed": {
       "name": "SRV Destroyed",
       "category": "SRV",
-      "description": "The powerful low-frequency explosion used at the end of Self-Destruct.",
+      "description": "The powerful low-frequency explosion used at the end of Self-Destruct",
       "generator": "sequence",
       "steps": [
         {
@@ -491,7 +601,7 @@
     "srv_handbrake_on": {
       "name": "SRV Handbrake On",
       "category": "SRV",
-      "description": "A short mechanical engagement click.",
+      "description": "A short mechanical engagement click",
       "generator": "sequence",
       "steps": [
         {
@@ -505,7 +615,7 @@
     "srv_handbrake_off": {
       "name": "SRV Handbrake Off",
       "category": "SRV",
-      "description": "A lighter mechanical release click.",
+      "description": "A lighter mechanical release click",
       "generator": "sequence",
       "steps": [
         {
@@ -519,7 +629,7 @@
     "other_afmurepair": {
       "name": "AFMU Repair",
       "category": "Ship",
-      "description": "An irregular sequence of machinery pulses for AFMU repair activity.",
+      "description": "An irregular sequence of machinery pulses for AFMU repair activity",
       "generator": "sequence",
       "variables": {
         "low": {
@@ -607,7 +717,7 @@
     "other_cockpitbreach": {
       "name": "Cockpit Breach",
       "category": "Ship",
-      "description": "A long falling pressure-release sweep.",
+      "description": "A long falling pressure-release sweep",
       "generator": "sequence",
       "steps": [
         {
@@ -622,7 +732,7 @@
     "other_selfdestruct": {
       "name": "Self-Destruct",
       "category": "Ship",
-      "description": "A rising warning followed by a powerful low-frequency blast.",
+      "description": "A rising warning followed by a powerful low-frequency blast",
       "generator": "sequence",
       "steps": [
         {
@@ -647,7 +757,7 @@
     "other_systemsshutdown": {
       "name": "Systems Shutdown",
       "category": "Ship",
-      "description": "A long descending power-down sweep.",
+      "description": "A long descending power-down sweep",
       "generator": "sequence",
       "steps": [
         {
@@ -662,7 +772,7 @@
     "other_systemsstartup": {
       "name": "Systems Startup",
       "category": "Ship",
-      "description": "A staged power-up sequence ending in a rising systems-online sweep.",
+      "description": "A staged power-up sequence ending in a rising systems-online sweep",
       "generator": "sequence",
       "steps": [
         {
@@ -710,7 +820,7 @@
     "station_repair_all": {
       "name": "Repair All",
       "category": "Station",
-      "description": "A long, varied machinery sequence for repairing the entire ship.",
+      "description": "A long, varied machinery sequence for repairing the entire ship",
       "generator": "sequence",
       "variables": {
         "low": {
@@ -830,7 +940,7 @@
     "station_repair_selected": {
       "name": "Repair Selected",
       "category": "Station",
-      "description": "A shorter machinery sequence for repairing selected modules.",
+      "description": "A shorter machinery sequence for repairing selected modules",
       "generator": "sequence",
       "variables": {
         "low": {
@@ -912,7 +1022,7 @@
     "station_refuel": {
       "name": "Refuel",
       "category": "Station",
-      "description": "A sustained low refueling hum with start and completion cues.",
+      "description": "A sustained low refueling hum with start and completion cues",
       "generator": "sequence",
       "variables": {
         "long": {
@@ -970,7 +1080,7 @@
     "station_refuel_partial": {
       "name": "Refuel 10%",
       "category": "Station",
-      "description": "A shorter refueling hum for the 10% Advanced Maintenance option.",
+      "description": "A shorter refueling hum for the 10% Advanced Maintenance option",
       "generator": "sequence",
       "steps": [
         {
@@ -1004,7 +1114,7 @@
     "station_restock_ammo": {
       "name": "Restock Ammunition",
       "category": "Station",
-      "description": "An eight-second sequence of service ports, container removal, cartridge loading, and securing latches.",
+      "description": "An eight-second sequence of service ports, container removal, cartridge loading, and securing latches",
       "generator": "sequence",
       "steps": [
         {
@@ -1098,7 +1208,7 @@
     "station_restockvehicle": {
       "name": "Restock Vehicle",
       "category": "Station",
-      "description": "A longer vehicle-loading sequence with bay movement, lift machinery, seating contacts, and a final latch.",
+      "description": "A longer vehicle-loading sequence with bay movement, lift machinery, seating contacts, and a final latch",
       "generator": "sequence",
       "steps": [
         {
@@ -1173,7 +1283,7 @@
     "trade_ejectcargo": {
       "name": "Eject Cargo",
       "category": "Ship",
-      "description": "A sequence of release, movement, and latch vibrations for cargo ejection.",
+      "description": "A sequence of release, movement, and latch vibrations for cargo ejection",
       "generator": "sequence",
       "steps": [
         {
@@ -1220,7 +1330,7 @@
     "travel_approachbody": {
       "name": "Approach Body",
       "category": "Travel",
-      "description": "A firm entry cue followed by a rising orbital-approach sweep.",
+      "description": "A firm entry cue followed by a rising orbital-approach sweep",
       "generator": "sequence",
       "steps": [
         {
@@ -1244,7 +1354,7 @@
     "travel_docked": {
       "name": "Docked",
       "category": "Travel",
-      "description": "A longer soft clamp vibration, a slight pause, then a solid engagement clunk.",
+      "description": "A longer soft clamp vibration, a slight pause, then a solid engagement clunk",
       "generator": "sequence",
       "steps": [
         {
@@ -1274,7 +1384,7 @@
     "travel_fsdjump": {
       "name": "FSD Jump",
       "category": "Travel",
-      "description": "A deep layered rumble for completing an FSD jump.",
+      "description": "A deep layered rumble for completing an FSD jump",
       "generator": "sequence",
       "steps": [
         {
@@ -1334,7 +1444,7 @@
     "travel_fsdengage": {
       "name": "FSD Engage",
       "category": "Travel",
-      "description": "A long rising charge followed by the FSD engagement bump.",
+      "description": "A long rising charge followed by the FSD engagement bump",
       "generator": "sequence",
       "steps": [
         {
@@ -1404,7 +1514,7 @@
     "travel_undocked": {
       "name": "Undocked",
       "category": "Travel",
-      "description": "A single solid clunk as the docking clamps release.",
+      "description": "A single solid clunk as the docking clamps release",
       "generator": "sequence",
       "steps": [
         {
@@ -1421,7 +1531,7 @@
     "status_hardpointsdeployed": {
       "name": "Hardpoints Deployed",
       "category": "Ship",
-      "description": "A two-stage mechanical extension effect.",
+      "description": "A two-stage mechanical extension effect",
       "generator": "sequence",
       "steps": [
         {
@@ -1445,7 +1555,7 @@
     "status_hardpointsretracted": {
       "name": "Hardpoints Retracted",
       "category": "Ship",
-      "description": "A long retraction movement followed by a latch click.",
+      "description": "A long retraction movement followed by a latch click",
       "generator": "sequence",
       "steps": [
         {
@@ -1469,7 +1579,7 @@
     "status_landinggeardeployed": {
       "name": "Landing Gear Deployed",
       "category": "Ship",
-      "description": "A multi-stage mechanism sequence for lowering landing gear.",
+      "description": "A multi-stage mechanism sequence for lowering landing gear",
       "generator": "sequence",
       "steps": [
         {
@@ -1523,7 +1633,7 @@
     "status_landinggearretracted": {
       "name": "Landing Gear Retracted",
       "category": "Ship",
-      "description": "A multi-stage mechanism sequence for raising landing gear.",
+      "description": "A multi-stage mechanism sequence for raising landing gear",
       "generator": "sequence",
       "steps": [
         {
@@ -1577,7 +1687,7 @@
     "status_shieldsdown": {
       "name": "Shields Down",
       "category": "Ship",
-      "description": "A brief rough collapse effect when shields fail.",
+      "description": "A brief rough collapse effect when shields fail",
       "generator": "sequence",
       "steps": [
         {
@@ -1591,7 +1701,7 @@
     "status_shieldsup": {
       "name": "Shields Up",
       "category": "Ship",
-      "description": "A rising energy sweep when shields return.",
+      "description": "A rising energy sweep when shields return",
       "generator": "sequence",
       "steps": [
         {
@@ -1606,7 +1716,7 @@
     "under_attack_shields": {
       "name": "Under Attack - Shields",
       "category": "Combat",
-      "description": "Three quick higher-frequency impacts used when an Under Attack warning arrives with shields online.",
+      "description": "Three quick higher-frequency impacts used when an Under Attack warning arrives with shields online",
       "selectable": false,
       "generator": "sequence",
       "steps": [
@@ -1624,7 +1734,7 @@
     "under_attack_hull": {
       "name": "Under Attack - Hull",
       "category": "Combat",
-      "description": "Three rough lower-frequency impacts used when an Under Attack warning arrives without shields.",
+      "description": "Three rough lower-frequency impacts used when an Under Attack warning arrives without shields",
       "selectable": false,
       "generator": "sequence",
       "steps": [
@@ -1644,7 +1754,7 @@
     "hull_threshold_80": {
       "name": "Hull Threshold 80%",
       "category": "Ship",
-      "description": "Three light, irregular structural impacts for the first hull-damage threshold.",
+      "description": "Three light, irregular structural impacts for the first hull-damage threshold",
       "selectable": false,
       "generator": "sequence",
       "steps": [
@@ -1665,7 +1775,7 @@
     "hull_threshold_60": {
       "name": "Hull Threshold 60%",
       "category": "Ship",
-      "description": "Four moderate, irregular structural impacts as hull integrity falls.",
+      "description": "Four moderate, irregular structural impacts as hull integrity falls",
       "selectable": false,
       "generator": "sequence",
       "steps": [
@@ -1686,7 +1796,7 @@
     "hull_threshold_40": {
       "name": "Hull Threshold 40%",
       "category": "Ship",
-      "description": "Five stronger, irregular structural impacts at low hull integrity.",
+      "description": "Five stronger, irregular structural impacts at low hull integrity",
       "selectable": false,
       "generator": "sequence",
       "steps": [
@@ -1707,7 +1817,7 @@
     "hull_threshold_20": {
       "name": "Hull Threshold 20%",
       "category": "Ship",
-      "description": "Seven heavy structural impacts and a low rumble at critical hull integrity.",
+      "description": "Seven heavy structural impacts and a low rumble at critical hull integrity",
       "selectable": false,
       "generator": "sequence",
       "steps": [
@@ -1734,7 +1844,7 @@
     "travel_leave_body_1": {
       "name": "Leave Body 1",
       "category": "Travel",
-      "description": "Smooth, light atmospheric boundary rumble.",
+      "description": "Smooth, light atmospheric boundary rumble",
       "generator": "atmospheric_rumble",
       "duration": 7.5,
       "fade_in": 1.3,
@@ -1769,7 +1879,7 @@
     "travel_leave_body_2": {
       "name": "Leave Body 2",
       "category": "Travel",
-      "description": "Rolling atmospheric turbulence with uneven pressure.",
+      "description": "Rolling atmospheric turbulence with uneven pressure",
       "generator": "atmospheric_rumble",
       "duration": 7.5,
       "fade_in": 1.0,
@@ -1805,7 +1915,7 @@
     "travel_leave_body_3": {
       "name": "Leave Body 3",
       "category": "Travel",
-      "description": "Deep, steady spacecraft and hull resonance.",
+      "description": "Deep, steady spacecraft and hull resonance",
       "generator": "atmospheric_rumble",
       "duration": 7.5,
       "fade_in": 1.6,
