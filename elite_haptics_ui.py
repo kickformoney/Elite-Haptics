@@ -11,6 +11,7 @@ import ctypes
 import json
 import os
 import queue
+import re
 import shutil
 import subprocess
 import sys
@@ -448,6 +449,9 @@ class EffectRecorderDialog(tk.Toplevel):
 
 
 class EffectEditorDialog(tk.Toplevel):
+    PLOT_LEFT = 90
+    PLOT_RIGHT = 14
+
     def __init__(self, manager, effect_id, definition):
         super().__init__(manager)
         self.manager = manager
@@ -558,11 +562,13 @@ class EffectEditorDialog(tk.Toplevel):
         return ranges
 
     def x_for_time(self, canvas, value):
-        return 76 + value / self.total_duration() * max(1, canvas.winfo_width() - 90)
+        return self.PLOT_LEFT + value / self.total_duration() * max(
+            1, canvas.winfo_width() - self.PLOT_LEFT - self.PLOT_RIGHT)
 
     def time_for_x(self, canvas, value):
-        width = max(1, canvas.winfo_width() - 90)
-        return min(self.total_duration(), max(0.0, (value - 76) / width * self.total_duration()))
+        width = max(1, canvas.winfo_width() - self.PLOT_LEFT - self.PLOT_RIGHT)
+        return min(self.total_duration(), max(
+            0.0, (value - self.PLOT_LEFT) / width * self.total_duration()))
 
     @staticmethod
     def clamp(value, low, high):
@@ -577,18 +583,22 @@ class EffectEditorDialog(tk.Toplevel):
                              ("intensity", self.intensity_canvas)):
             canvas.delete("all")
             width, height = canvas.winfo_width(), canvas.winfo_height()
-            canvas.create_text(8, 8, anchor="nw", text=("FREQUENCY" if lane == "frequency"
-                                                        else "STRENGTH"),
+            canvas.create_text(self.PLOT_LEFT - 10, 8, anchor="ne",
+                               text=("FREQUENCY" if lane == "frequency" else "STRENGTH"),
                                fill=palette["muted"], font=("Segoe UI Semibold", 8))
-            canvas.create_text(68, 30, anchor="e", text=("120" if lane == "frequency" else "100%"),
+            canvas.create_text(self.PLOT_LEFT - 10, 30, anchor="e",
+                               text=("120" if lane == "frequency" else "100%"),
                                fill=palette["muted"], font=("Segoe UI", 8))
-            canvas.create_text(68, height - 28, anchor="e",
+            canvas.create_text(self.PLOT_LEFT - 10, height - 28, anchor="e",
                                text=("20" if lane == "frequency" else "0%"),
                                fill=palette["muted"], font=("Segoe UI", 8))
             for tick in range(5):
                 tick_time = self.total_duration() * tick / 4
                 tick_x = self.x_for_time(canvas, tick_time)
-                canvas.create_text(tick_x, height - 2, anchor="s", text=f"{tick_time:.2f}s",
+                tick_anchor = "se" if tick == 0 else "s"
+                tick_x -= 6 if tick == 0 else 0
+                canvas.create_text(tick_x, height - 2, anchor=tick_anchor,
+                                   text=f"{tick_time:.2f}s",
                                    fill=palette["muted"], font=("Segoe UI", 7))
             for index, (step, (start, end)) in enumerate(zip(self.steps, ranges)):
                 x1, x2 = self.x_for_time(canvas, start), self.x_for_time(canvas, end)
@@ -612,7 +622,8 @@ class EffectEditorDialog(tk.Toplevel):
                                    fill=palette["accent"], outline="")
                 canvas.create_oval(x2 - 6, y2 - 6, x2 + 6, y2 + 6,
                                    fill=palette["accent"], outline="")
-            canvas.create_line(width - 14, 0, width - 14, height, fill=palette["border"])
+            canvas.create_line(width - self.PLOT_RIGHT, 0, width - self.PLOT_RIGHT, height,
+                               fill=palette["border"])
             play_x = self.x_for_time(canvas, self.playhead_time)
             canvas.create_line(play_x, 0, play_x, height, fill=palette["special"], width=2,
                                tags="playhead")
@@ -989,8 +1000,8 @@ class EffectManagerDialog(tk.Toplevel):
         self.owner = owner
         self.title("Manage custom effects")
         self.transient(owner)
-        self.geometry("760x460")
-        self.minsize(680, 390)
+        self.geometry("834x460")
+        self.minsize(834, 400)
         
         frame = ttk.Frame(self, padding=16)
         frame.pack(fill="both", expand=True)
@@ -1006,6 +1017,10 @@ class EffectManagerDialog(tk.Toplevel):
         
         ttk.Button(actions, text="Edit selected…", command=self.edit_selected).pack(side="left")
         ttk.Button(actions, text="Preview", command=self.preview_selected).pack(
+            side="left", padx=(8, 0))
+        ttk.Button(actions, text="Duplicate", command=self.duplicate_selected).pack(
+            side="left", padx=(8, 0))
+        ttk.Button(actions, text="Change ID…", command=self.change_id).pack(
             side="left", padx=(8, 0))
         ttk.Button(actions, text="Delete…", command=self.delete_selected).pack(
             side="left", padx=(8, 0))
@@ -1065,6 +1080,107 @@ class EffectManagerDialog(tk.Toplevel):
             engine.interrupt_playback()
             engine.queue_haptic(effect)
 
+    def duplicate_selected(self):
+        effect_id = self.selected()
+        if not effect_id:
+            return
+        catalog = load_user_effect_catalog()
+        source = catalog["effects"].get(effect_id)
+        if not isinstance(source, dict):
+            return
+        existing_names = {
+            str(definition.get("name", "")).strip().casefold()
+            for definition in engine.EFFECT_DEFINITIONS.values()
+        }
+        base_name = f"{source.get('name', effect_id)} Copy"
+        copy_name, suffix = base_name, 2
+        while copy_name.casefold() in existing_names:
+            copy_name = f"{base_name} {suffix}"
+            suffix += 1
+        new_id = unique_effect_id(copy_name, set(engine.EFFECT_DEFINITIONS) |
+                                  set(catalog["effects"]))
+        duplicate = json.loads(json.dumps(source))
+        duplicate["name"] = copy_name
+        catalog["effects"][new_id] = duplicate
+        write_user_effect_catalog(catalog)
+        self.catalog_changed(select_id=new_id)
+
+    def request_effect_id(self, current_id):
+        result = {"value": None}
+        dialog = tk.Toplevel(self)
+        dialog.title("Change effect ID")
+        dialog.transient(self)
+        frame = ttk.Frame(dialog, padding=14)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Effect ID").pack(anchor="w")
+        ttk.Label(frame, text="Use lowercase letters, numbers, and underscores.",
+                  style="Muted.TLabel").pack(anchor="w", pady=(2, 8))
+        value_var = tk.StringVar(value=current_id)
+        entry = ttk.Entry(frame, textvariable=value_var, width=42)
+        entry.pack(fill="x")
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill="x", pady=(12, 0))
+
+        def accept(_event=None):
+            value = value_var.get().strip()
+            if not re.fullmatch(r"[a-z][a-z0-9_]*", value):
+                messagebox.showwarning(
+                    "Invalid effect ID",
+                    "Start with a lowercase letter and use only lowercase letters, numbers, and underscores.",
+                    parent=dialog)
+                return "break"
+            if value != current_id and value in engine.EFFECT_DEFINITIONS:
+                messagebox.showwarning("Effect ID already exists",
+                                       f"'{value}' is already in use.", parent=dialog)
+                return "break"
+            result["value"] = value
+            dialog.destroy()
+            return "break"
+
+        ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side="right")
+        ttk.Button(buttons, text="Change ID", command=accept).pack(side="right", padx=(0, 8))
+        dialog.bind("<Return>", accept)
+        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+        dialog.grab_set()
+        self.owner.center_dialog(dialog)
+        entry.select_range(0, "end")
+        entry.focus_set()
+        self.wait_window(dialog)
+        self.grab_set()
+        return result["value"]
+
+    def change_id(self):
+        old_id = self.selected()
+        if not old_id:
+            return
+        new_id = self.request_effect_id(old_id)
+        if not new_id or new_id == old_id:
+            return
+        catalog = load_user_effect_catalog()
+        definition = catalog["effects"].pop(old_id, None)
+        if not isinstance(definition, dict):
+            return
+        catalog["effects"][new_id] = definition
+        write_user_effect_catalog(catalog)
+        references_changed = False
+        for binding in engine.CUSTOM_BINDINGS:
+            if binding.get("effect") == old_id:
+                binding["effect"] = new_id
+                references_changed = True
+        for override in engine.BUILTIN_OVERRIDES.values():
+            if override.get("effect") == old_id:
+                override["effect"] = new_id
+                references_changed = True
+        for mode in engine.TEST_PAD_MODES.values():
+            for assignment in mode.values():
+                if isinstance(assignment, dict) and assignment.get("effect") == old_id:
+                    assignment["effect"] = new_id
+                    references_changed = True
+        if references_changed:
+            engine.save_config()
+        self.catalog_changed(select_id=new_id)
+
     def delete_selected(self):
         effect_id = self.selected()
         if not effect_id:
@@ -1082,9 +1198,13 @@ class EffectManagerDialog(tk.Toplevel):
         write_user_effect_catalog(catalog)
         self.catalog_changed()
 
-    def catalog_changed(self):
+    def catalog_changed(self, select_id=None):
         self.owner.reload_effect_catalog(notify=False)
         self.refresh()
+        if select_id and self.tree.exists(select_id):
+            self.tree.selection_set(select_id)
+            self.tree.focus(select_id)
+            self.tree.see(select_id)
 
 
 class App(tk.Tk):
