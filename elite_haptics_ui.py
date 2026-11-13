@@ -497,7 +497,7 @@ class EffectEditorDialog(tk.Toplevel):
                   style="Muted.TLabel").pack(side="right")
         point_options = ttk.Frame(frame)
         point_options.grid(row=6, column=0, columnspan=2, sticky="w", pady=(8, 8))
-        ttk.Checkbutton(point_options, text="Link nearby points",
+        ttk.Checkbutton(point_options, text="Link nearby frequency points",
                         variable=self.link_nearby_var).pack(side="left")
         palette = manager.owner.palette
         canvas_options = dict(width=900, height=145, background=palette["field"],
@@ -558,11 +558,11 @@ class EffectEditorDialog(tk.Toplevel):
         return ranges
 
     def x_for_time(self, canvas, value):
-        return 34 + value / self.total_duration() * max(1, canvas.winfo_width() - 48)
+        return 76 + value / self.total_duration() * max(1, canvas.winfo_width() - 90)
 
     def time_for_x(self, canvas, value):
-        width = max(1, canvas.winfo_width() - 48)
-        return min(self.total_duration(), max(0.0, (value - 34) / width * self.total_duration()))
+        width = max(1, canvas.winfo_width() - 90)
+        return min(self.total_duration(), max(0.0, (value - 76) / width * self.total_duration()))
 
     @staticmethod
     def clamp(value, low, high):
@@ -580,9 +580,9 @@ class EffectEditorDialog(tk.Toplevel):
             canvas.create_text(8, 8, anchor="nw", text=("FREQUENCY" if lane == "frequency"
                                                         else "STRENGTH"),
                                fill=palette["muted"], font=("Segoe UI Semibold", 8))
-            canvas.create_text(30, 18, anchor="e", text=("120" if lane == "frequency" else "100%"),
+            canvas.create_text(68, 30, anchor="e", text=("120" if lane == "frequency" else "100%"),
                                fill=palette["muted"], font=("Segoe UI", 8))
-            canvas.create_text(30, height - 15, anchor="e",
+            canvas.create_text(68, height - 28, anchor="e",
                                text=("20" if lane == "frequency" else "0%"),
                                fill=palette["muted"], font=("Segoe UI", 8))
             for tick in range(5):
@@ -602,11 +602,11 @@ class EffectEditorDialog(tk.Toplevel):
                 if lane == "frequency":
                     start_value = float(step.get("start_frequency", step.get("frequency", 40)))
                     end_value = float(step.get("end_frequency", start_value))
-                    y1 = 14 + (120 - self.clamp(start_value, 20, 120)) / 100 * (height - 28)
-                    y2 = 14 + (120 - self.clamp(end_value, 20, 120)) / 100 * (height - 28)
+                    y1 = 30 + (120 - self.clamp(start_value, 20, 120)) / 100 * (height - 58)
+                    y2 = 30 + (120 - self.clamp(end_value, 20, 120)) / 100 * (height - 58)
                 else:
                     start_value = end_value = float(step.get("volume", 1.0))
-                    y1 = y2 = 14 + (1 - self.clamp(start_value, 0, 1)) * (height - 28)
+                    y1 = y2 = 30 + (1 - self.clamp(start_value, 0, 1)) * (height - 58)
                 canvas.create_line(x1, y1, x2, y2, fill=palette["accent"], width=3)
                 canvas.create_oval(x1 - 6, y1 - 6, x1 + 6, y1 + 6,
                                    fill=palette["accent"], outline="")
@@ -636,11 +636,11 @@ class EffectEditorDialog(tk.Toplevel):
                 else:
                     fields = ("frequency", "frequency")
                 values = [float(step.get(field, step.get("frequency", 40))) for field in fields]
-                ys = [14 + (120 - self.clamp(value, 20, 120)) / 100 * (height - 28)
+                ys = [30 + (120 - self.clamp(value, 20, 120)) / 100 * (height - 58)
                       for value in values]
             else:
                 fields = ("volume", "volume")
-                y = 14 + (1 - self.clamp(float(step.get("volume", 1)), 0, 1)) * (height - 28)
+                y = 30 + (1 - self.clamp(float(step.get("volume", 1)), 0, 1)) * (height - 58)
                 ys = (y, y)
             points.extend({"index": index, "field": field, "x": x, "y": y}
                           for field, x, y in zip(fields, xs, ys))
@@ -677,7 +677,7 @@ class EffectEditorDialog(tk.Toplevel):
             seed = hits[0]
             self.selected_index = seed["index"]
             group = (self.nearby_point_group(points, seed)
-                     if self.link_nearby_var.get() else [seed])
+                     if lane == "frequency" and self.link_nearby_var.get() else [seed])
             self.drag = ("points", lane, group)
             self.load_inspector()
             self.draw_timeline()
@@ -721,7 +721,7 @@ class EffectEditorDialog(tk.Toplevel):
             return
         height = event.widget.winfo_height()
         if lane == "frequency":
-            value = round(self.clamp(120 - (event.y - 14) / max(1, height - 28) * 100,
+            value = round(self.clamp(120 - (event.y - 30) / max(1, height - 58) * 100,
                                      20, 120), 1)
             if step.get("type") == "sweep":
                 start, end = self.step_ranges()[self.selected_index]
@@ -730,17 +730,17 @@ class EffectEditorDialog(tk.Toplevel):
             else:
                 step["frequency"] = value
         else:
-            step["volume"] = round(self.clamp(1 - (event.y - 14) / max(1, height - 28), 0, 1), 2)
+            step["volume"] = round(self.clamp(1 - (event.y - 30) / max(1, height - 58), 0, 1), 2)
         self.load_inspector()
         self.draw_timeline()
 
     def adjust_point_group(self, event, lane, points):
         height = event.widget.winfo_height()
         if lane == "frequency":
-            value = round(self.clamp(120 - (event.y - 14) / max(1, height - 28) * 100,
+            value = round(self.clamp(120 - (event.y - 30) / max(1, height - 58) * 100,
                                      20, 120), 1)
         else:
-            value = round(self.clamp(1 - (event.y - 14) / max(1, height - 28), 0, 1), 2)
+            value = round(self.clamp(1 - (event.y - 30) / max(1, height - 58), 0, 1), 2)
         for point in points:
             self.steps[point["index"]][point["field"]] = value
         self.load_inspector()
