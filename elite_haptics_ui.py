@@ -454,7 +454,7 @@ class EffectEditorDialog(tk.Toplevel):
         self.effect_id = effect_id
         self.title("Edit custom effect")
         self.transient(manager)
-        self.geometry("1100x780")
+        self.geometry("1110x780")
         self.minsize(1100, 700)
         self.name_var = tk.StringVar(value=definition.get("name", effect_id))
         self.category_var = tk.StringVar(value=definition.get("category", "Custom"))
