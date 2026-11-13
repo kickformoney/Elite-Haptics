@@ -18,7 +18,7 @@ import sys
 import threading
 import time
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox as native_messagebox, ttk
 
 from effect_recorder import (append_gesture, effect_definition, make_step, pad_values,
                              trim_silence, unique_effect_id, validate_sequence_steps)
@@ -74,6 +74,108 @@ def normalize_theme_id(value):
     if value in THEME_OPTIONS:
         return value
     return THEME_IDS_BY_LABEL.get(value, "dark_blue")
+
+
+class ThemedMessageBox:
+    """Theme-aware replacement for the native Tk messagebox helpers."""
+
+    ICONS = {
+        "info": ("i", "accent"),
+        "warning": ("!", "special"),
+        "error": ("×", "special"),
+        "question": ("?", "accent"),
+    }
+
+    @staticmethod
+    def _theme_owner(parent):
+        current = parent
+        while current is not None:
+            if hasattr(current, "palette"):
+                return current
+            current = getattr(current, "master", None)
+        return None
+
+    def _show(self, kind, title, message, parent=None, **options):
+        parent = parent or getattr(tk, "_default_root", None)
+        if parent is None:
+            fallback = (native_messagebox.askyesno if kind == "question"
+                        else getattr(native_messagebox, f"show{kind}", native_messagebox.showinfo))
+            return fallback(title, message, **options)
+        owner = self._theme_owner(parent)
+        palette = getattr(owner, "palette", {
+            "background": "#101010", "field": "#0D1825", "foreground": "#DFEAF2",
+            "muted": "#8AA7BD", "border": "#263B50", "accent": "#72B7F2",
+            "special": "#E47A86", "select": "#162430",
+        })
+        result = {"value": False if kind == "question" else "ok"}
+        previous_grab = parent.grab_current()
+        dialog = tk.Toplevel(parent)
+        dialog.title(title)
+        dialog.transient(parent)
+        dialog.resizable(False, False)
+        dialog.configure(background=palette["background"])
+        if os.path.exists(APP_ICON_PATH):
+            try:
+                dialog.iconbitmap(APP_ICON_PATH)
+            except tk.TclError:
+                pass
+        body = ttk.Frame(dialog, padding=(18, 16))
+        body.pack(fill="both", expand=True)
+        icon, color_key = self.ICONS[kind]
+        tk.Label(body, text=icon, width=2, anchor="n", background=palette["background"],
+                 foreground=palette[color_key], font=("Segoe UI Semibold", 20)).grid(
+                     row=0, column=0, sticky="n", padx=(0, 12))
+        ttk.Label(body, text=str(message), wraplength=500, justify="left").grid(
+            row=0, column=1, sticky="w")
+        buttons = ttk.Frame(body)
+        buttons.grid(row=1, column=0, columnspan=2, sticky="e", pady=(18, 0))
+
+        def finish(value):
+            result["value"] = value
+            dialog.destroy()
+
+        if kind == "question":
+            cancel_button = ttk.Button(buttons, text="No", command=lambda: finish(False))
+            cancel_button.pack(side="left")
+            default_button = ttk.Button(buttons, text="Yes", command=lambda: finish(True))
+            default_button.pack(side="left", padx=(8, 0))
+            dialog.bind("<Escape>", lambda _event: finish(False))
+            dialog.bind("<Return>", lambda _event: finish(True))
+            dialog.bind("<KP_Enter>", lambda _event: finish(True))
+        else:
+            default_button = ttk.Button(buttons, text="OK", command=lambda: finish("ok"))
+            default_button.pack(side="left")
+            dialog.bind("<Escape>", lambda _event: finish("ok"))
+            dialog.bind("<Return>", lambda _event: finish("ok"))
+            dialog.bind("<KP_Enter>", lambda _event: finish("ok"))
+        dialog.protocol("WM_DELETE_WINDOW", lambda: finish(
+            False if kind == "question" else "ok"))
+        dialog.update_idletasks()
+        width, height = dialog.winfo_reqwidth(), dialog.winfo_reqheight()
+        x = parent.winfo_rootx() + max(0, (parent.winfo_width() - width) // 2)
+        y = parent.winfo_rooty() + max(0, (parent.winfo_height() - height) // 2)
+        dialog.geometry(f"+{x}+{y}")
+        dialog.grab_set()
+        default_button.focus_set()
+        parent.wait_window(dialog)
+        if previous_grab is not None and previous_grab.winfo_exists():
+            previous_grab.grab_set()
+        return result["value"]
+
+    def showinfo(self, title, message, **options):
+        return self._show("info", title, message, **options)
+
+    def showwarning(self, title, message, **options):
+        return self._show("warning", title, message, **options)
+
+    def showerror(self, title, message, **options):
+        return self._show("error", title, message, **options)
+
+    def askyesno(self, title, message, **options):
+        return self._show("question", title, message, **options)
+
+
+messagebox = ThemedMessageBox()
 
 # In a one-file PyInstaller build the bundled engine is extracted to a
 # temporary directory. Keep user-editable files beside the executable instead
