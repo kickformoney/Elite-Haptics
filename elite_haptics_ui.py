@@ -459,6 +459,7 @@ class EffectEditorDialog(tk.Toplevel):
         self.name_var = tk.StringVar(value=definition.get("name", effect_id))
         self.category_var = tk.StringVar(value=definition.get("category", "Custom"))
         self.description_var = tk.StringVar(value=definition.get("description", ""))
+        self.link_nearby_var = tk.BooleanVar(value=True)
         self.steps = json.loads(json.dumps(definition.get("steps", [])))
         self.selected_index = 0
         self.drag = None
@@ -494,13 +495,17 @@ class EffectEditorDialog(tk.Toplevel):
         ttk.Button(toolbar, text="Edit JSON…", command=self.edit_json).pack(side="left", padx=(6, 0))
         ttk.Label(toolbar, text="Click a section; drag points or boundaries to adjust it.",
                   style="Muted.TLabel").pack(side="right")
+        point_options = ttk.Frame(frame)
+        point_options.grid(row=6, column=0, columnspan=2, sticky="w", pady=(8, 8))
+        ttk.Checkbutton(point_options, text="Link nearby points",
+                        variable=self.link_nearby_var).pack(side="left")
         palette = manager.owner.palette
         canvas_options = dict(width=900, height=145, background=palette["field"],
                               highlightthickness=1, highlightbackground=palette["border"])
         self.frequency_canvas = tk.Canvas(frame, **canvas_options)
-        self.frequency_canvas.grid(row=6, column=0, columnspan=2, sticky="ew")
+        self.frequency_canvas.grid(row=7, column=0, columnspan=2, sticky="ew")
         self.intensity_canvas = tk.Canvas(frame, **canvas_options)
-        self.intensity_canvas.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(6, 10))
+        self.intensity_canvas.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(6, 10))
         for lane, canvas in (("frequency", self.frequency_canvas),
                              ("intensity", self.intensity_canvas)):
             canvas.bind("<ButtonPress-1>", lambda event, value=lane: self.timeline_press(event, value))
@@ -509,7 +514,7 @@ class EffectEditorDialog(tk.Toplevel):
             canvas.bind("<Configure>", lambda _event: self.draw_timeline())
 
         inspector = ttk.LabelFrame(frame, text="Selected step", padding=8)
-        inspector.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(0, 12))
+        inspector.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(0, 12))
         self.step_type_var = tk.StringVar()
         self.duration_var = tk.StringVar()
         self.start_frequency_var = tk.StringVar()
@@ -530,7 +535,7 @@ class EffectEditorDialog(tk.Toplevel):
         ttk.Button(inspector, text="Apply", command=self.apply_inspector).grid(
             row=1, column=len(fields), padx=(8, 4))
         actions = ttk.Frame(frame)
-        actions.grid(row=9, column=0, columnspan=2, sticky="e")
+        actions.grid(row=10, column=0, columnspan=2, sticky="e")
         ttk.Button(actions, text="Cancel", command=self.close).pack(side="left")
         ttk.Button(actions, text="Save changes", command=self.save).pack(side="left", padx=(8, 0))
         manager.owner.bind_dialog_shortcuts(self, self.save, self.close)
@@ -618,37 +623,79 @@ class EffectEditorDialog(tk.Toplevel):
                 return index
         return 0
 
+    def timeline_points(self, canvas, lane):
+        points = []
+        height = canvas.winfo_height()
+        for index, (step, (start, end)) in enumerate(zip(self.steps, self.step_ranges())):
+            if step.get("type") == "wait":
+                continue
+            xs = (self.x_for_time(canvas, start), self.x_for_time(canvas, end))
+            if lane == "frequency":
+                if step.get("type") == "sweep":
+                    fields = ("start_frequency", "end_frequency")
+                else:
+                    fields = ("frequency", "frequency")
+                values = [float(step.get(field, step.get("frequency", 40))) for field in fields]
+                ys = [14 + (120 - self.clamp(value, 20, 120)) / 100 * (height - 28)
+                      for value in values]
+            else:
+                fields = ("volume", "volume")
+                y = 14 + (1 - self.clamp(float(step.get("volume", 1)), 0, 1)) * (height - 28)
+                ys = (y, y)
+            points.extend({"index": index, "field": field, "x": x, "y": y}
+                          for field, x, y in zip(fields, xs, ys))
+        return points
+
+    @staticmethod
+    def nearby_point_group(points, seed, radius=18):
+        group = [seed]
+        remaining = [point for point in points if point is not seed]
+        changed = True
+        while changed:
+            changed = False
+            for point in list(remaining):
+                if any((point["x"] - member["x"]) ** 2 +
+                       (point["y"] - member["y"]) ** 2 <= radius ** 2 for member in group):
+                    group.append(point)
+                    remaining.remove(point)
+                    changed = True
+        unique = {}
+        for point in group:
+            unique[(point["index"], point["field"])] = point
+        return list(unique.values())
+
     def timeline_press(self, event, lane):
         value = self.time_for_x(event.widget, event.x)
         ranges = self.step_ranges()
+        points = self.timeline_points(event.widget, lane)
+        hits = [point for point in points
+                if (event.x - point["x"]) ** 2 + (event.y - point["y"]) ** 2 <= 14 ** 2]
+        if hits:
+            hits.sort(key=lambda point: (point["index"] != self.selected_index,
+                                         (event.x - point["x"]) ** 2 +
+                                         (event.y - point["y"]) ** 2))
+            seed = hits[0]
+            self.selected_index = seed["index"]
+            group = (self.nearby_point_group(points, seed)
+                     if self.link_nearby_var.get() else [seed])
+            self.drag = ("points", lane, group)
+            self.load_inspector()
+            self.draw_timeline()
+            return
+        for boundary in range(1, len(ranges)):
+            if abs(event.x - self.x_for_time(event.widget, ranges[boundary][0])) <= 7:
+                self.drag = ("boundary", boundary, ranges[boundary][0])
+                return
         self.selected_index = self.index_at_time(value)
-        point_hit = False
-        step = self.steps[self.selected_index]
-        if step.get("type") != "wait":
-            start, end = ranges[self.selected_index]
-            if lane == "frequency":
-                values = (float(step.get("start_frequency", step.get("frequency", 40))),
-                          float(step.get("end_frequency", step.get("frequency", 40))))
-                ys = [14 + (120 - self.clamp(item, 20, 120)) / 100 *
-                      (event.widget.winfo_height() - 28) for item in values]
-            else:
-                y = 14 + (1 - self.clamp(float(step.get("volume", 1)), 0, 1)) * (
-                    event.widget.winfo_height() - 28)
-                ys = (y, y)
-            xs = (self.x_for_time(event.widget, start), self.x_for_time(event.widget, end))
-            point_hit = any(abs(event.x - x) <= 12 and abs(event.y - y) <= 12
-                            for x, y in zip(xs, ys))
-        if not point_hit:
-            for boundary in range(1, len(ranges)):
-                if abs(event.x - self.x_for_time(event.widget, ranges[boundary][0])) <= 7:
-                    self.drag = ("boundary", boundary, ranges[boundary][0])
-                    return
         self.drag = (lane, self.selected_index, value)
         self.load_inspector()
         self.draw_timeline()
 
     def timeline_drag(self, event, lane):
         if not self.drag:
+            return
+        if self.drag[0] == "points":
+            self.adjust_point_group(event, self.drag[1], self.drag[2])
             return
         if self.drag[0] == "boundary":
             boundary = self.drag[1]
@@ -684,6 +731,18 @@ class EffectEditorDialog(tk.Toplevel):
                 step["frequency"] = value
         else:
             step["volume"] = round(self.clamp(1 - (event.y - 14) / max(1, height - 28), 0, 1), 2)
+        self.load_inspector()
+        self.draw_timeline()
+
+    def adjust_point_group(self, event, lane, points):
+        height = event.widget.winfo_height()
+        if lane == "frequency":
+            value = round(self.clamp(120 - (event.y - 14) / max(1, height - 28) * 100,
+                                     20, 120), 1)
+        else:
+            value = round(self.clamp(1 - (event.y - 14) / max(1, height - 28), 0, 1), 2)
+        for point in points:
+            self.steps[point["index"]][point["field"]] = value
         self.load_inspector()
         self.draw_timeline()
 
