@@ -1567,6 +1567,11 @@ class App(tk.Tk):
         self.notebook.add(self.pads_tab, text="Test Pad")
         self.notebook.add(monitoring_tab, text="Monitoring")
         self.notebook.add(self.settings_tab, text="Settings")
+        self.version_label = ttk.Label(
+            self.notebook,
+            text=f"Version {engine.EFFECT_CATALOG_VERSION or 'Unknown'}",
+            style="Muted.TLabel")
+        self.version_label.place(relx=1.0, x=-10, y=4, anchor="ne")
         self._build_bindings(bindings_tab)
         self._build_pads(self.pads_tab)
         self._build_monitoring(monitoring_tab)
