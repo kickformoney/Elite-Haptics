@@ -1,8 +1,6 @@
 # Elite Haptics trigger guide
 
-Triggers connect Elite Dangerous telemetry to haptic effects.  Most users can assign, adjust, enable, and disable mappings from the **Effects** tab without editing JSON
-
-> A trigger describes when something happens.  An effect describes what the transducer plays
+Triggers connect Elite Dangerous telemetry to haptic effects.  Users can assign, adjust, enable, and disable mappings from the **Effects** tab without editing JSON
 
 ## Assign an effect to a trigger
 
@@ -14,6 +12,33 @@ Triggers connect Elite Dangerous telemetry to haptic effects.  Most users can as
 Double-click an existing row to edit it.  The context menu can enable or disable mappings without deleting them
 
 The same trigger can have more than one effect assigned to it.  Built-in mappings and custom mappings are displayed together, with their current enabled state
+
+## Create a trigger from a Journal event
+
+You can create a new trigger directly from an event name found in the journal file.  Find the value of the `event` property and type it exactly as shown, including capitalization
+
+For example, a Journal file may contain an entry like this:
+
+```json
+{
+  "timestamp": "2026-11-14T18:42:10Z",
+  "event": "DockingGranted",
+  "LandingPad": 12,
+  "StationName": "Example Station"
+}
+```
+
+To make an effect play whenever Elite Dangerous records that event:
+
+1.  Open the **Effects** tab
+2.  Click in the **Trigger** box and type `DockingGranted`
+3.  Select the effect you want to play
+4.  Set the mapping strength
+5.  Select **Add binding**
+
+The new custom mapping appears in the list immediately.  The assigned effect will play the next time a station grants docking clearance
+
+This direct method works for ordinary Journal events that are not already renamed by `triggers.json`.  If an event already appears in the Trigger list, select its friendly name instead of typing the raw Journal event
 
 ## Test a mapping
 

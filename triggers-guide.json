@@ -7,11 +7,7 @@
     },
     {
       "type": "paragraph",
-      "text": "Triggers connect Elite Dangerous telemetry to haptic effects.  Most users can assign, adjust, enable, and disable mappings from the **Effects** tab without editing JSON"
-    },
-    {
-      "type": "note",
-      "text": "A trigger describes when something happens.  An effect describes what the transducer plays"
+      "text": "Triggers connect Elite Dangerous telemetry to haptic effects.  Users can assign, adjust, enable, and disable mappings from the **Effects** tab without editing JSON"
     },
     {
       "type": "heading2",
@@ -44,6 +40,60 @@
     {
       "type": "paragraph",
       "text": "The same trigger can have more than one effect assigned to it.  Built-in mappings and custom mappings are displayed together, with their current enabled state"
+    },
+    {
+      "type": "heading2",
+      "text": "Create a trigger from a Journal event"
+    },
+    {
+      "type": "paragraph",
+      "text": "You can create a new trigger directly from an event name found in the journal file.  Find the value of the `event` property and type it exactly as shown, including capitalization"
+    },
+    {
+      "type": "paragraph",
+      "text": "For example, a Journal file may contain an entry like this:"
+    },
+    {
+      "type": "code",
+      "text": "{\n  \"timestamp\": \"2026-11-14T18:42:10Z\",\n  \"event\": \"DockingGranted\",\n  \"LandingPad\": 12,\n  \"StationName\": \"Example Station\"\n}",
+      "language": "json"
+    },
+    {
+      "type": "paragraph",
+      "text": "To make an effect play whenever Elite Dangerous records that event:"
+    },
+    {
+      "type": "numbered",
+      "number": 1,
+      "text": "Open the **Effects** tab"
+    },
+    {
+      "type": "numbered",
+      "number": 2,
+      "text": "Click in the **Trigger** box and type `DockingGranted`"
+    },
+    {
+      "type": "numbered",
+      "number": 3,
+      "text": "Select the effect you want to play"
+    },
+    {
+      "type": "numbered",
+      "number": 4,
+      "text": "Set the mapping strength"
+    },
+    {
+      "type": "numbered",
+      "number": 5,
+      "text": "Select **Add binding**"
+    },
+    {
+      "type": "paragraph",
+      "text": "The new custom mapping appears in the list immediately.  The assigned effect will play the next time a station grants docking clearance"
+    },
+    {
+      "type": "paragraph",
+      "text": "This direct method works for ordinary Journal events that are not already renamed by `triggers.json`.  If an event already appears in the Trigger list, select its friendly name instead of typing the raw Journal event"
     },
     {
       "type": "heading2",
