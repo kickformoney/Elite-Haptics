@@ -18,6 +18,9 @@ import sys
 import threading
 import time
 import tkinter as tk
+import urllib.error
+import urllib.request
+import webbrowser
 from tkinter import filedialog, messagebox as native_messagebox, ttk
 
 from effect_recorder import (append_gesture, effect_definition, make_step, pad_values,
@@ -51,6 +54,8 @@ EFFECTS_GUIDE_PATH = os.path.join(HERE, "EFFECTS_GUIDE.md")
 TRIGGERS_GUIDE_PATH = os.path.join(HERE, "TRIGGERS_GUIDE.md")
 APP_ICON_PATH = os.path.join(HERE, "elite-haptics.ico")
 CHANGELOG_CONFIG_PATH = os.path.join(HERE, "changelog.json")
+GITHUB_LATEST_RELEASE_API = "https://api.github.com/repos/kickformoney/Elite-Haptics/releases/latest"
+GITHUB_RELEASES_URL = "https://github.com/kickformoney/Elite-Haptics/releases/latest"
 
 THEME_OPTIONS = {
     "dark_blue": "Dark Blue",
@@ -74,6 +79,12 @@ def normalize_theme_id(value):
     if value in THEME_OPTIONS:
         return value
     return THEME_IDS_BY_LABEL.get(value, "dark_blue")
+
+
+def version_tuple(value):
+    """Return a comparable three-part release version, or None when malformed."""
+    match = re.match(r"^v?(\d+)\.(\d+)\.(\d+)", str(value).strip())
+    return tuple(map(int, match.groups())) if match else None
 
 
 class ThemedMessageBox:
@@ -1334,6 +1345,7 @@ class App(tk.Tk):
         self.style = ttk.Style(self)
         self._geometry_save_job = None
         self.monitor_queue = queue.Queue()
+        self.update_check_queue = queue.Queue()
         self.monitor_counts = {}
         self.monitor_count_items = {}
         self.pad_effect_combos = []
@@ -1385,6 +1397,7 @@ class App(tk.Tk):
         self.after(200, self.poll_monitor_events)
         self.after(600, self.show_effect_migration_notice)
         self.after(1000, self.refresh_monitoring_status)
+        self.after(2500, self.start_update_check)
         self.after(10, self.enable_taskbar_window)
 
     def _build(self):
@@ -2108,6 +2121,60 @@ class App(tk.Tk):
         self.status_text.set(text)
         if hasattr(self, "status_dot"):
             self.status_dot.configure(style=style)
+
+    def start_update_check(self):
+        """Check GitHub in the background without delaying application startup."""
+        local_version = version_tuple(engine.EFFECT_CATALOG_VERSION)
+        if local_version is None:
+            return
+
+        def check():
+            result = None
+            try:
+                request = urllib.request.Request(
+                    GITHUB_LATEST_RELEASE_API,
+                    headers={
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Elite-Haptics-Update-Check",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    })
+                with urllib.request.urlopen(request, timeout=4) as response:
+                    release = json.loads(response.read(262144).decode("utf-8"))
+                tag = str(release.get("tag_name", "")).strip()
+                remote_version = version_tuple(tag)
+                if remote_version is not None and remote_version > local_version:
+                    result = tag
+            except (OSError, TimeoutError, urllib.error.URLError,
+                    json.JSONDecodeError, UnicodeDecodeError, ValueError):
+                pass
+            self.update_check_queue.put(result)
+
+        threading.Thread(target=check, daemon=True, name="github-update-check").start()
+        self.after(100, self.poll_update_check)
+
+    def poll_update_check(self):
+        try:
+            tag = self.update_check_queue.get_nowait()
+        except queue.Empty:
+            self.after(100, self.poll_update_check)
+            return
+        if tag and tag != engine.LAST_UPDATE_NOTICE:
+            self.show_available_update(tag)
+
+    def show_available_update(self, tag):
+        active_dialog = self.grab_current()
+        if active_dialog is not None and active_dialog is not self:
+            self.after(500, lambda: self.show_available_update(tag))
+            return
+        engine.LAST_UPDATE_NOTICE = tag
+        engine.save_config()
+        current = engine.EFFECT_CATALOG_VERSION or "this version"
+        if messagebox.askyesno(
+                "Elite Haptics update available",
+                f"Elite Haptics {tag.lstrip('v')} is available.\n\n"
+                f"You are currently using {current}. Open the GitHub release page?",
+                parent=self):
+            webbrowser.open(GITHUB_RELEASES_URL)
 
     def show_effect_migration_notice(self, force=False):
         """Show the one-time effect changelog and every compensated user value."""

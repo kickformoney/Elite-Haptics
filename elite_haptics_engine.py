@@ -36,6 +36,7 @@ TEST_PAD_MODES = {"Default": {}}
 APPLIED_EFFECT_MIGRATIONS = []
 EFFECT_CATALOG_VERSION = ""
 PENDING_EFFECT_MIGRATION_NOTICE = None
+LAST_UPDATE_NOTICE = ""
 
 # Transient telemetry and UI-observer state; intentionally never persisted.
 CURRENT_STATUS_FLAGS = 0
@@ -146,7 +147,7 @@ def load_config():
     """Load shipped defaults, then overlay the user's saved preferences."""
     global MASTER_VOLUME, CUSTOM_BINDINGS, BUILTIN_OVERRIDES
     global TEST_PAD_MODES, OUTPUT_DEVICE_NAME, JOURNAL_DIR, COLOR_THEME, WINDOW_GEOMETRY
-    global APPLIED_EFFECT_MIGRATIONS, PENDING_EFFECT_MIGRATION_NOTICE
+    global APPLIED_EFFECT_MIGRATIONS, PENDING_EFFECT_MIGRATION_NOTICE, LAST_UPDATE_NOTICE
     prepare_effect_catalog()
     load_trigger_definitions()
     load_default_config()
@@ -174,6 +175,7 @@ def load_config():
                 TEST_PAD_MODES = data["test_pad_modes"]
             APPLIED_EFFECT_MIGRATIONS = list(data.get("applied_effect_migrations", []))
             PENDING_EFFECT_MIGRATION_NOTICE = data.get("pending_effect_migration_notice")
+            LAST_UPDATE_NOTICE = str(data.get("last_update_notice", ""))
         except (json.JSONDecodeError, OSError):
             pass  # corrupt or unreadable - just use the default
     apply_effect_strength_migrations()
@@ -204,6 +206,7 @@ def save_config():
                 "test_pad_modes": TEST_PAD_MODES,
                 "applied_effect_migrations": APPLIED_EFFECT_MIGRATIONS,
                 "pending_effect_migration_notice": PENDING_EFFECT_MIGRATION_NOTICE,
+                "last_update_notice": LAST_UPDATE_NOTICE,
             }, f, indent=2)
     except OSError as e:
         print(f"[WARNING] Could not save config: {e}")
