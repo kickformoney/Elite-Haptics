@@ -51,9 +51,7 @@ engine = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
 spec.loader.exec_module(engine)
 
-EFFECTS_GUIDE_PATH = os.path.join(HERE, "EFFECTS_GUIDE.md")
 EFFECTS_GUIDE_CONFIG_PATH = os.path.join(HERE, "effects-guide.json")
-TRIGGERS_GUIDE_PATH = os.path.join(HERE, "TRIGGERS_GUIDE.md")
 TRIGGERS_GUIDE_CONFIG_PATH = os.path.join(HERE, "triggers-guide.json")
 APP_ICON_PATH = os.path.join(HERE, "elite-haptics.ico")
 CHANGELOG_CONFIG_PATH = os.path.join(HERE, "changelog.json")
@@ -1905,10 +1903,10 @@ class App(tk.Tk):
             messagebox.showwarning("Could not open built-in effects", str(exc))
 
     def open_effects_guide(self):
-        self.open_compiled_guide(EFFECTS_GUIDE_CONFIG_PATH, EFFECTS_GUIDE_PATH,
+        self.open_compiled_guide(EFFECTS_GUIDE_CONFIG_PATH,
                                  "Elite Haptics effect guide", "effect")
 
-    def open_compiled_guide(self, config_path, markdown_path, title, guide_name):
+    def open_compiled_guide(self, config_path, title, guide_name):
         """Show a compiled Markdown guide in a themed, scrollable dialog."""
         try:
             with open(config_path, "r", encoding="utf-8") as file:
@@ -2009,14 +2007,6 @@ class App(tk.Tk):
 
         buttons = ttk.Frame(frame)
         buttons.pack(fill="x", pady=(12, 0))
-
-        def open_markdown():
-            try:
-                os.startfile(markdown_path)
-            except (AttributeError, OSError) as exc:
-                messagebox.showwarning("Could not open Markdown guide", str(exc), parent=dialog)
-
-        ttk.Button(buttons, text="Open Markdown", command=open_markdown).pack(side="left")
         ttk.Button(buttons, text="Close", command=dialog.destroy).pack(side="right")
         self.bind_dialog_shortcuts(dialog, dialog.destroy, dialog.destroy)
         self.center_dialog(dialog)
@@ -2028,7 +2018,7 @@ class App(tk.Tk):
             messagebox.showwarning("Could not open triggers.json", str(exc))
 
     def open_triggers_guide(self):
-        self.open_compiled_guide(TRIGGERS_GUIDE_CONFIG_PATH, TRIGGERS_GUIDE_PATH,
+        self.open_compiled_guide(TRIGGERS_GUIDE_CONFIG_PATH,
                                  "Elite Haptics trigger guide", "trigger")
 
     def reload_effect_catalog(self, notify=True):
