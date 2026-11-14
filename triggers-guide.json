@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "blocks": [
+    {
+      "type": "heading1",
+      "text": "Elite Haptics trigger guide"
+    },
+    {
+      "type": "paragraph",
+      "text": "Triggers connect Elite Dangerous telemetry to haptic effects.  Most users can assign, adjust, enable, and disable mappings from the **Effects** tab without editing JSON"
+    },
+    {
+      "type": "note",
+      "text": "A trigger describes when something happens.  An effect describes what the transducer plays"
+    },
+    {
+      "type": "heading2",
+      "text": "Assign an effect to a trigger"
+    },
+    {
+      "type": "numbered",
+      "number": 1,
+      "text": "Open the **Effects** tab"
+    },
+    {
+      "type": "numbered",
+      "number": 2,
+      "text": "Select a trigger and an effect"
+    },
+    {
+      "type": "numbered",
+      "number": 3,
+      "text": "Set the mapping strength"
+    },
+    {
+      "type": "numbered",
+      "number": 4,
+      "text": "Select **Add binding**"
+    },
+    {
+      "type": "paragraph",
+      "text": "Double-click an existing row to edit it.  The context menu can enable or disable mappings without deleting them"
+    },
+    {
+      "type": "paragraph",
+      "text": "The same trigger can have more than one effect assigned to it.  Built-in mappings and custom mappings are displayed together, with their current enabled state"
+    },
+    {
+      "type": "heading2",
+      "text": "Test a mapping"
+    },
+    {
+      "type": "paragraph",
+      "text": "Use the **Test Pad** to preview an effect and adjust its strength before assigning it.  The **Monitoring** tab shows incoming telemetry and can help confirm whether the expected trigger is firing"
+    },
+    {
+      "type": "paragraph",
+      "text": "Changes made in the app are saved in `haptics_config.json`"
+    },
+    {
+      "type": "heading2",
+      "text": "Customize the trigger catalog"
+    },
+    {
+      "type": "paragraph",
+      "text": "`triggers.json` defines the trigger names, categories, Journal event mappings, and Status flag transitions available in the app.  Open it from **Settings > Open triggers.json**, save the file, then select **Reload triggers**"
+    },
+    {
+      "type": "paragraph",
+      "text": "If reloading fails, the app keeps the previously loaded catalog and shows the JSON or validation error"
+    },
+    {
+      "type": "paragraph",
+      "text": "Keep `triggers.json` as valid JSON: property names and text require double quotes, commas separate entries, and JSON does not support comments"
+    },
+    {
+      "type": "heading2",
+      "text": "Add a Journal event"
+    },
+    {
+      "type": "paragraph",
+      "text": "Add the exact Elite Dangerous event name to `journal_events` and map it to a unique, stable trigger ID"
+    },
+    {
+      "type": "code",
+      "text": "\"SupercruiseExit\": \"travel_supercruise_exit\"",
+      "language": "json"
+    },
+    {
+      "type": "paragraph",
+      "text": "Then add the display information under `triggers`"
+    },
+    {
+      "type": "code",
+      "text": "\"travel_supercruise_exit\": {\n  \"category\": \"Travel\",\n  \"name\": \"Supercruise - Exit\"\n}",
+      "language": "json"
+    },
+    {
+      "type": "paragraph",
+      "text": "After reloading, the trigger appears in the **Effects** tab and can be assigned to any selectable effect"
+    },
+    {
+      "type": "heading2",
+      "text": "Trigger metadata"
+    },
+    {
+      "type": "bullet",
+      "text": "`category` controls grouping and filtering in the Effects tab"
+    },
+    {
+      "type": "bullet",
+      "text": "`name` is the friendly label shown to users"
+    },
+    {
+      "type": "bullet",
+      "text": "`annotation: \"special\"` adds the coral special-trigger treatment"
+    },
+    {
+      "type": "bullet",
+      "text": "`annotation: \"advanced\"` adds a normal-color asterisk for Advanced Maintenance"
+    },
+    {
+      "type": "bullet",
+      "text": "`note` supplies the explanatory text shown below the controls"
+    },
+    {
+      "type": "paragraph",
+      "text": "Annotations are presentation metadata.  They do not create special playback logic"
+    },
+    {
+      "type": "heading2",
+      "text": "Status flags"
+    },
+    {
+      "type": "paragraph",
+      "text": "`status_flags` watches bit transitions in Elite Dangerous `Status.json`"
+    },
+    {
+      "type": "code",
+      "text": "{\n  \"bit\": 3,\n  \"on\": \"ship_shields_restored\",\n  \"off\": \"ship_shields_offline\"\n}",
+      "language": "json"
+    },
+    {
+      "type": "paragraph",
+      "text": "Entries use the original `Flags` value by default.  For Odyssey, on-foot states, and other second-field flags, specify the source explicitly"
+    },
+    {
+      "type": "code",
+      "text": "{\n  \"field\": \"Flags2\",\n  \"bit\": 6,\n  \"on\": \"onfoot_low_oxygen\",\n  \"off\": \"onfoot_oxygen_normal\"\n}",
+      "language": "json"
+    },
+    {
+      "type": "paragraph",
+      "text": "Both the `on` and `off` trigger IDs need entries under `triggers`.  Only add or change a Status bit after confirming it against the Elite Dangerous Status Flags documentation"
+    },
+    {
+      "type": "heading2",
+      "text": "Special actions"
+    },
+    {
+      "type": "paragraph",
+      "text": "The catalog can define and display telemetry triggers, but complex behaviors require an action supported by the engine and assigned in `default_config.json`.  Current examples include:"
+    },
+    {
+      "type": "bullet",
+      "text": "Continuous start and automatic stop"
+    },
+    {
+      "type": "bullet",
+      "text": "Shield-aware Under Attack feedback"
+    },
+    {
+      "type": "bullet",
+      "text": "Hull-integrity threshold selection"
+    },
+    {
+      "type": "paragraph",
+      "text": "Ordinary Journal and Status triggers do not require Python changes"
+    },
+    {
+      "type": "heading2",
+      "text": "Moving to a new installation"
+    },
+    {
+      "type": "paragraph",
+      "text": "Select **Settings > Migrate configuration** to copy your settings, mappings, custom effects, and customized trigger catalog from an old install directory to a new one"
+    },
+    {
+      "type": "paragraph",
+      "text": "The migration validates all source files first and creates timestamped backups of configuration files that already exist in the new directory.  Close and reopen the new installation afterward so it loads the migrated configuration"
+    }
+  ],
+  "source": "TRIGGERS_GUIDE.md"
+}

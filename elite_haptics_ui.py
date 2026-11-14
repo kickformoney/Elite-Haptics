@@ -21,6 +21,7 @@ import tkinter as tk
 import urllib.error
 import urllib.request
 import webbrowser
+from datetime import datetime
 from tkinter import filedialog, messagebox as native_messagebox, ttk
 
 from effect_recorder import (append_gesture, effect_definition, make_step, pad_values,
@@ -53,10 +54,12 @@ spec.loader.exec_module(engine)
 EFFECTS_GUIDE_PATH = os.path.join(HERE, "EFFECTS_GUIDE.md")
 EFFECTS_GUIDE_CONFIG_PATH = os.path.join(HERE, "effects-guide.json")
 TRIGGERS_GUIDE_PATH = os.path.join(HERE, "TRIGGERS_GUIDE.md")
+TRIGGERS_GUIDE_CONFIG_PATH = os.path.join(HERE, "triggers-guide.json")
 APP_ICON_PATH = os.path.join(HERE, "elite-haptics.ico")
 CHANGELOG_CONFIG_PATH = os.path.join(HERE, "changelog.json")
 GITHUB_LATEST_RELEASE_API = "https://api.github.com/repos/kickformoney/Elite-Haptics/releases/latest"
 GITHUB_RELEASES_URL = "https://github.com/kickformoney/Elite-Haptics/releases/latest"
+USER_CONFIGURATION_FILES = ("haptics_config.json", "effects.json", "triggers.json")
 
 THEME_OPTIONS = {
     "dark_blue": "Dark Blue",
@@ -86,6 +89,72 @@ def version_tuple(value):
     """Return a comparable three-part release version, or None when malformed."""
     match = re.match(r"^v?(\d+)\.(\d+)\.(\d+)", str(value).strip())
     return tuple(map(int, match.groups())) if match else None
+
+
+def migrate_configuration_files(old_directory, new_directory):
+    """Copy user-owned configuration between installations with backups."""
+    old_directory = os.path.abspath(os.path.normpath(old_directory))
+    new_directory = os.path.abspath(os.path.normpath(new_directory))
+    if old_directory == new_directory:
+        raise ValueError("The old and new install directories must be different")
+    if not os.path.isdir(old_directory):
+        raise ValueError("The old install directory does not exist")
+    if not os.path.isdir(new_directory):
+        raise ValueError("The new install directory does not exist")
+
+    sources = []
+    for filename in USER_CONFIGURATION_FILES:
+        source = os.path.join(old_directory, filename)
+        if not os.path.isfile(source):
+            continue
+        try:
+            with open(source, "r", encoding="utf-8") as file:
+                value = json.load(file)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"{filename} is not valid JSON: {exc}") from exc
+        if not isinstance(value, dict):
+            raise ValueError(f"{filename} must contain a JSON object")
+        sources.append((filename, source, os.path.join(new_directory, filename)))
+    if not sources:
+        expected = ", ".join(USER_CONFIGURATION_FILES)
+        raise ValueError(f"No configuration files were found.  Expected: {expected}")
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    staged = []
+    backups = []
+    installed = []
+    try:
+        for filename, source, destination in sources:
+            temporary = destination + ".migration-tmp"
+            shutil.copy2(source, temporary)
+            staged.append(temporary)
+        for filename, _source, destination in sources:
+            backup = None
+            if os.path.exists(destination):
+                backup = f"{destination}.migration-backup-{timestamp}"
+                shutil.copy2(destination, backup)
+                backups.append((destination, backup))
+            os.replace(destination + ".migration-tmp", destination)
+            staged.remove(destination + ".migration-tmp")
+            installed.append((destination, backup))
+    except OSError:
+        for destination, backup in reversed(installed):
+            try:
+                if backup and os.path.exists(backup):
+                    shutil.copy2(backup, destination)
+                elif os.path.exists(destination):
+                    os.remove(destination)
+            except OSError:
+                pass
+        raise
+    finally:
+        for temporary in staged:
+            try:
+                os.remove(temporary)
+            except OSError:
+                pass
+    return [filename for filename, _source, _destination in sources], [
+        backup for _destination, backup in backups]
 
 
 class ThemedMessageBox:
@@ -200,8 +269,6 @@ if getattr(sys, "frozen", False):
     external_manifest_path = os.path.join(application_dir, "effects.legacy-manifest.json")
     external_migrations_path = os.path.join(application_dir, "effect_migrations.json")
     external_triggers_path = os.path.join(application_dir, "triggers.json")
-    external_guide_path = os.path.join(application_dir, "EFFECTS_GUIDE.md")
-    external_triggers_guide_path = os.path.join(application_dir, "TRIGGERS_GUIDE.md")
     try:
         for bundled, external in (
                 (engine.EFFECTS_DEFAULT_PATH, external_defaults_path),
@@ -211,11 +278,6 @@ if getattr(sys, "frozen", False):
                 shutil.copyfile(bundled, external)
         if not os.path.exists(external_triggers_path):
             shutil.copyfile(engine.TRIGGERS_CONFIG_PATH, external_triggers_path)
-        if not os.path.exists(external_guide_path) and os.path.exists(EFFECTS_GUIDE_PATH):
-            shutil.copyfile(EFFECTS_GUIDE_PATH, external_guide_path)
-        if (not os.path.exists(external_triggers_guide_path)
-                and os.path.exists(TRIGGERS_GUIDE_PATH)):
-            shutil.copyfile(TRIGGERS_GUIDE_PATH, external_triggers_guide_path)
         engine.EFFECTS_CONFIG_PATH = external_effects_path
         engine.EFFECTS_DEFAULT_PATH = external_defaults_path
         engine.EFFECTS_LEGACY_MANIFEST_PATH = external_manifest_path
@@ -224,8 +286,6 @@ if getattr(sys, "frozen", False):
         engine.TRIGGERS_CONFIG_PATH = external_triggers_path
         engine.TRIGGERS_CONFIG_MTIME = None
         engine.load_trigger_definitions()
-        EFFECTS_GUIDE_PATH = external_guide_path
-        TRIGGERS_GUIDE_PATH = external_triggers_guide_path
     except OSError:
         # A read-only installation can still use the bundled catalog.
         pass
@@ -1607,6 +1667,9 @@ class App(tk.Tk):
             grid.rowconfigure(n, weight=1)
 
     def _build_settings(self, parent):
+        ttk.Button(parent, text="Migrate configuration…",
+                   command=self.open_configuration_migrator).grid(
+                       row=0, column=0, sticky="w", pady=(0, 16))
         ttk.Button(parent, text="Recent changes",
                    command=lambda: self.show_effect_migration_notice(force=True)).grid(
                        row=0, column=1, sticky="e", pady=(0, 16))
@@ -1677,6 +1740,104 @@ class App(tk.Tk):
                                        sticky="w", pady=(8, 0))
         parent.columnconfigure(0, weight=1)
 
+    def open_configuration_migrator(self):
+        """Let the user migrate portable configuration to another install."""
+        dialog = tk.Toplevel(self)
+        dialog.title("Migrate configuration")
+        dialog.transient(self)
+        dialog.resizable(False, False)
+        if os.path.exists(APP_ICON_PATH):
+            try:
+                dialog.iconbitmap(APP_ICON_PATH)
+            except tk.TclError:
+                pass
+        frame = ttk.Frame(dialog, padding=18)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(
+            frame,
+            text=("Select the folder containing the old installation and the folder "
+                  "containing the new installation.  Existing destination files are "
+                  "backed up before they are replaced"),
+            wraplength=620, justify="left").grid(
+                row=0, column=0, columnspan=3, sticky="w", pady=(0, 16))
+
+        old_var = tk.StringVar()
+        new_var = tk.StringVar(value=os.path.dirname(engine.CONFIG_PATH))
+        status_var = tk.StringVar()
+
+        ttk.Label(frame, text="Old install directory").grid(row=1, column=0, columnspan=3,
+                                                              sticky="w")
+        ttk.Entry(frame, textvariable=old_var, width=72).grid(
+            row=2, column=0, columnspan=2, sticky="ew", pady=(4, 12))
+        ttk.Button(
+            frame, text="Browse…",
+            command=lambda: choose_directory(old_var)).grid(row=2, column=2, padx=(8, 0),
+                                                             pady=(4, 12))
+        ttk.Label(frame, text="New install directory").grid(row=3, column=0, columnspan=3,
+                                                              sticky="w")
+        ttk.Entry(frame, textvariable=new_var, width=72).grid(
+            row=4, column=0, columnspan=2, sticky="ew", pady=(4, 10))
+        ttk.Button(
+            frame, text="Browse…",
+            command=lambda: choose_directory(new_var)).grid(row=4, column=2, padx=(8, 0),
+                                                             pady=(4, 10))
+        ttk.Label(frame, textvariable=status_var, style="Muted.TLabel",
+                  wraplength=620, justify="left").grid(
+                      row=5, column=0, columnspan=3, sticky="w", pady=(0, 16))
+        actions = ttk.Frame(frame)
+        actions.grid(row=6, column=0, columnspan=3, sticky="e")
+
+        def choose_directory(variable):
+            initial = variable.get().strip() or os.path.dirname(engine.CONFIG_PATH)
+            selected = filedialog.askdirectory(parent=dialog, initialdir=initial,
+                                                title="Select install directory")
+            if selected:
+                variable.set(selected)
+
+        def refresh_status(*_args):
+            old_directory = old_var.get().strip()
+            if not os.path.isdir(old_directory):
+                status_var.set("Select the old install directory to see what will be migrated")
+                return
+            found = [filename for filename in USER_CONFIGURATION_FILES
+                     if os.path.isfile(os.path.join(old_directory, filename))]
+            if found:
+                status_var.set("Ready to migrate: " + ", ".join(found))
+            else:
+                status_var.set("No configuration files were found in the selected folder")
+
+        def migrate():
+            try:
+                migrated, backups = migrate_configuration_files(
+                    old_var.get().strip(), new_var.get().strip())
+            except (OSError, ValueError) as exc:
+                messagebox.showwarning("Could not migrate configuration", str(exc), parent=dialog)
+                return
+            message = "Migrated: " + ", ".join(migrated)
+            if backups:
+                message += (f"\n\nCreated {len(backups)} backup"
+                            f"{'s' if len(backups) != 1 else ''} in the new install directory")
+            migrated_current_install = (
+                os.path.abspath(os.path.normpath(new_var.get().strip())) ==
+                os.path.abspath(os.path.dirname(engine.CONFIG_PATH)))
+            if migrated_current_install:
+                message += "\n\nElite Haptics will now close so the migrated configuration is preserved"
+            else:
+                message += ("\n\nClose and reopen the new installation to load the migrated "
+                            "configuration")
+            messagebox.showinfo("Configuration migrated", message, parent=dialog)
+            dialog.destroy()
+            if migrated_current_install:
+                self.close(preserve_migrated_config=True)
+
+        old_var.trace_add("write", refresh_status)
+        ttk.Button(actions, text="Cancel", command=dialog.destroy).pack(side="left")
+        ttk.Button(actions, text="Migrate", command=migrate).pack(side="left", padx=(8, 0))
+        refresh_status()
+        self.bind_dialog_shortcuts(dialog, migrate, dialog.destroy)
+        dialog.grab_set()
+        self.center_dialog(dialog)
+
     def open_effects_file(self):
         try:
             os.startfile(engine.EFFECTS_CONFIG_PATH)
@@ -1696,19 +1857,23 @@ class App(tk.Tk):
             messagebox.showwarning("Could not open built-in effects", str(exc))
 
     def open_effects_guide(self):
-        """Show the compiled effect guide in a themed, scrollable dialog."""
+        self.open_compiled_guide(EFFECTS_GUIDE_CONFIG_PATH, EFFECTS_GUIDE_PATH,
+                                 "Elite Haptics effect guide", "effect")
+
+    def open_compiled_guide(self, config_path, markdown_path, title, guide_name):
+        """Show a compiled Markdown guide in a themed, scrollable dialog."""
         try:
-            with open(EFFECTS_GUIDE_CONFIG_PATH, "r", encoding="utf-8") as file:
+            with open(config_path, "r", encoding="utf-8") as file:
                 guide = json.load(file)
             blocks = guide.get("blocks")
             if not isinstance(blocks, list):
                 raise ValueError("The compiled guide does not contain a block list.")
         except (OSError, json.JSONDecodeError, ValueError) as exc:
-            messagebox.showwarning("Could not open effect guide", str(exc), parent=self)
+            messagebox.showwarning(f"Could not open {guide_name} guide", str(exc), parent=self)
             return
 
         dialog = tk.Toplevel(self)
-        dialog.title("Elite Haptics effect guide")
+        dialog.title(title)
         dialog.transient(self)
         dialog.geometry("900x700")
         dialog.minsize(680, 480)
@@ -1792,7 +1957,7 @@ class App(tk.Tk):
 
         def open_markdown():
             try:
-                os.startfile(EFFECTS_GUIDE_PATH)
+                os.startfile(markdown_path)
             except (AttributeError, OSError) as exc:
                 messagebox.showwarning("Could not open Markdown guide", str(exc), parent=dialog)
 
@@ -1808,10 +1973,8 @@ class App(tk.Tk):
             messagebox.showwarning("Could not open triggers.json", str(exc))
 
     def open_triggers_guide(self):
-        try:
-            os.startfile(TRIGGERS_GUIDE_PATH)
-        except (AttributeError, OSError) as exc:
-            messagebox.showwarning("Could not open trigger guide", str(exc))
+        self.open_compiled_guide(TRIGGERS_GUIDE_CONFIG_PATH, TRIGGERS_GUIDE_PATH,
+                                 "Elite Haptics trigger guide", "trigger")
 
     def reload_effect_catalog(self, notify=True):
         try:
@@ -2948,14 +3111,15 @@ class App(tk.Tk):
             engine.WINDOW_GEOMETRY = self.geometry()
             engine.save_config()
 
-    def close(self):
+    def close(self, preserve_migrated_config=False):
         engine.remove_monitor_listener(self.monitor_queue.put)
         if self._geometry_save_job is not None:
             self.after_cancel(self._geometry_save_job)
             self._geometry_save_job = None
-        if self.state() == "normal" and not self._window_maximized:
-            engine.WINDOW_GEOMETRY = self.geometry()
-        engine.save_config()
+        if not preserve_migrated_config:
+            if self.state() == "normal" and not self._window_maximized:
+                engine.WINDOW_GEOMETRY = self.geometry()
+            engine.save_config()
         self.runtime.stop()
         self.destroy()
 

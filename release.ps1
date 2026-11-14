@@ -157,12 +157,10 @@ try {
         @{ Source = 'dist\effects.default.json'; Destination = 'effects.default.json' }
         @{ Source = 'dist\effects.legacy-manifest.json'; Destination = 'effects.legacy-manifest.json' }
         @{ Source = 'dist\effect_migrations.json'; Destination = 'effect_migrations.json' }
-        @{ Source = 'dist\CHANGELOG.md'; Destination = 'CHANGELOG.md' }
         @{ Source = 'dist\changelog.json'; Destination = 'changelog.json' }
         @{ Source = 'dist\triggers.json'; Destination = 'triggers.json' }
-        @{ Source = 'dist\EFFECTS_GUIDE.md'; Destination = 'EFFECTS_GUIDE.md' }
         @{ Source = 'dist\effects-guide.json'; Destination = 'effects-guide.json' }
-        @{ Source = 'dist\TRIGGERS_GUIDE.md'; Destination = 'TRIGGERS_GUIDE.md' }
+        @{ Source = 'dist\triggers-guide.json'; Destination = 'triggers-guide.json' }
         @{ Source = 'README.md'; Destination = 'README.md' }
         @{ Source = 'LICENSE'; Destination = 'LICENSE' }
     )

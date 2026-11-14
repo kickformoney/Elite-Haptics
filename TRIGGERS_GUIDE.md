@@ -1,16 +1,43 @@
-# Elite Haptics trigger catalog
+# Elite Haptics trigger guide
 
-`triggers.json` defines which Elite Dangerous telemetry inputs appear in the Effects tab. Save changes and choose **Settings > Reload triggers** to apply them without restarting the app.
+Triggers connect Elite Dangerous telemetry to haptic effects.  Most users can assign, adjust, enable, and disable mappings from the **Effects** tab without editing JSON
 
-## Adding a Journal event
+> A trigger describes when something happens.  An effect describes what the transducer plays
 
-Add the exact Elite Dangerous event name to `journal_events` and map it to a unique, stable trigger ID:
+## Assign an effect to a trigger
+
+1.  Open the **Effects** tab
+2.  Select a trigger and an effect
+3.  Set the mapping strength
+4.  Select **Add binding**
+
+Double-click an existing row to edit it.  The context menu can enable or disable mappings without deleting them
+
+The same trigger can have more than one effect assigned to it.  Built-in mappings and custom mappings are displayed together, with their current enabled state
+
+## Test a mapping
+
+Use the **Test Pad** to preview an effect and adjust its strength before assigning it.  The **Monitoring** tab shows incoming telemetry and can help confirm whether the expected trigger is firing
+
+Changes made in the app are saved in `haptics_config.json`
+
+## Customize the trigger catalog
+
+`triggers.json` defines the trigger names, categories, Journal event mappings, and Status flag transitions available in the app.  Open it from **Settings > Open triggers.json**, save the file, then select **Reload triggers**
+
+If reloading fails, the app keeps the previously loaded catalog and shows the JSON or validation error
+
+Keep `triggers.json` as valid JSON: property names and text require double quotes, commas separate entries, and JSON does not support comments
+
+## Add a Journal event
+
+Add the exact Elite Dangerous event name to `journal_events` and map it to a unique, stable trigger ID
 
 ```json
 "SupercruiseExit": "travel_supercruise_exit"
 ```
 
-Then add the display information under `triggers`:
+Then add the display information under `triggers`
 
 ```json
 "travel_supercruise_exit": {
@@ -19,21 +46,21 @@ Then add the display information under `triggers`:
 }
 ```
 
-After reloading, the trigger appears in the Effects tab and can be assigned to any selectable effect.
+After reloading, the trigger appears in the **Effects** tab and can be assigned to any selectable effect
 
 ## Trigger metadata
 
-- `category` controls grouping and filtering in the Effects tab.
-- `name` is the friendly label shown to users.
-- `annotation: "special"` adds the coral special-trigger treatment.
-- `annotation: "advanced"` adds a normal-color asterisk for Advanced Maintenance.
-- `note` supplies the explanatory text shown below the controls.
+- `category` controls grouping and filtering in the Effects tab
+- `name` is the friendly label shown to users
+- `annotation: "special"` adds the coral special-trigger treatment
+- `annotation: "advanced"` adds a normal-color asterisk for Advanced Maintenance
+- `note` supplies the explanatory text shown below the controls
 
-Annotations are presentation metadata. They do not create special playback logic.
+Annotations are presentation metadata.  They do not create special playback logic
 
 ## Status flags
 
-`status_flags` watches bit transitions in Elite Dangerous `Status.json`:
+`status_flags` watches bit transitions in Elite Dangerous `Status.json`
 
 ```json
 {
@@ -43,8 +70,7 @@ Annotations are presentation metadata. They do not create special playback logic
 }
 ```
 
-Entries use the original `Flags` value by default. For Odyssey/on-foot states and
-other second-field flags, specify the source explicitly:
+Entries use the original `Flags` value by default.  For Odyssey, on-foot states, and other second-field flags, specify the source explicitly
 
 ```json
 {
@@ -55,14 +81,20 @@ other second-field flags, specify the source explicitly:
 }
 ```
 
-Both the `on` and `off` trigger IDs need entries under `triggers`. Only add or change a Status bit after confirming it against the Elite Dangerous Status Flags documentation.
+Both the `on` and `off` trigger IDs need entries under `triggers`.  Only add or change a Status bit after confirming it against the Elite Dangerous Status Flags documentation
 
 ## Special actions
 
-The catalog can define and display telemetry triggers, but complex behaviors still require an action supported by the engine and assigned in `default_config.json`. Current examples include:
+The catalog can define and display telemetry triggers, but complex behaviors require an action supported by the engine and assigned in `default_config.json`.  Current examples include:
 
 - Continuous start and automatic stop
 - Shield-aware Under Attack feedback
 - Hull-integrity threshold selection
 
-Ordinary Journal and Status triggers do not require Python changes.
+Ordinary Journal and Status triggers do not require Python changes
+
+## Moving to a new installation
+
+Select **Settings > Migrate configuration** to copy your settings, mappings, custom effects, and customized trigger catalog from an old install directory to a new one
+
+The migration validates all source files first and creates timestamped backups of configuration files that already exist in the new directory.  Close and reopen the new installation afterward so it loads the migrated configuration
