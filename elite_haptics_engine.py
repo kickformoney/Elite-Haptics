@@ -604,6 +604,15 @@ def apply_effect_strength_migrations():
         with open(EFFECT_MIGRATIONS_PATH, "r", encoding="utf-8") as file:
             catalog = json.load(file)
         EFFECT_CATALOG_VERSION = str(catalog.get("catalog_version", ""))
+        current_release_prefix = f"{EFFECT_CATALOG_VERSION}-"
+        if isinstance(PENDING_EFFECT_MIGRATION_NOTICE, dict):
+            previous_effects = PENDING_EFFECT_MIGRATION_NOTICE.get("effects", [])
+            PENDING_EFFECT_MIGRATION_NOTICE["effects"] = [
+                item for item in previous_effects
+                if isinstance(item, dict)
+                and str(item.get("id", "")).startswith(current_release_prefix)
+            ] if isinstance(previous_effects, list) else []
+            PENDING_EFFECT_MIGRATION_NOTICE["catalog_version"] = EFFECT_CATALOG_VERSION
         pending = [item for item in catalog.get("migrations", [])
                    if item.get("id") not in APPLIED_EFFECT_MIGRATIONS]
         if not pending:
@@ -639,7 +648,10 @@ def apply_effect_strength_migrations():
         PENDING_EFFECT_MIGRATION_NOTICE = {
             "catalog_version": EFFECT_CATALOG_VERSION,
             "backup_path": backup_path,
-            "effects": report,
+            "effects": [
+                item for item in report
+                if str(item.get("id", "")).startswith(current_release_prefix)
+            ],
         }
         save_config()
         changed = sum(len(item["adjustments"]) for item in report)

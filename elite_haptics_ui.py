@@ -2638,7 +2638,7 @@ class App(tk.Tk):
             insert_inline_markdown(value, block_tags.get(block_type, "body"))
             text.insert("end", "\n")
 
-        if not inserted_effect_updates:
+        if not inserted_effect_updates and notice.get("effects"):
             text.insert("end", "Customized effect strength adjustments\n", "h2")
             text.insert(
                 "end",
