@@ -759,7 +759,9 @@ class EffectEditorDialog(tk.Toplevel):
                 if step.get("type") == "sweep":
                     fields = ("start_frequency", "end_frequency")
                 else:
-                    fields = ("frequency", "frequency")
+                    # A sine is drawn with two independently draggable endpoints.
+                    # Moving either one promotes it to a sweep.
+                    fields = ("start_frequency", "end_frequency")
                 values = [float(step.get(field, step.get("frequency", 40))) for field in fields]
                 ys = [30 + (120 - self.clamp(value, 20, 120)) / 100 * (height - 58)
                       for value in values]
@@ -779,6 +781,11 @@ class EffectEditorDialog(tk.Toplevel):
         while changed:
             changed = False
             for point in list(remaining):
+                # Nearby linking joins boundaries between sections. Never join
+                # both ends of one short section or it becomes impossible to
+                # give that section a slope.
+                if any(point["index"] == member["index"] for member in group):
+                    continue
                 if any((point["x"] - member["x"]) ** 2 +
                        (point["y"] - member["y"]) ** 2 <= radius ** 2 for member in group):
                     group.append(point)
@@ -848,12 +855,16 @@ class EffectEditorDialog(tk.Toplevel):
         if lane == "frequency":
             value = round(self.clamp(120 - (event.y - 30) / max(1, height - 58) * 100,
                                      20, 120), 1)
-            if step.get("type") == "sweep":
-                start, end = self.step_ranges()[self.selected_index]
-                midpoint = self.x_for_time(event.widget, (start + end) / 2)
-                step["start_frequency" if event.x <= midpoint else "end_frequency"] = value
-            else:
-                step["frequency"] = value
+            start, end = self.step_ranges()[self.selected_index]
+            midpoint = self.x_for_time(event.widget, (start + end) / 2)
+            field = "start_frequency" if event.x <= midpoint else "end_frequency"
+            if step.get("type") == "sine":
+                tone = float(step.get("frequency", 40))
+                step.pop("frequency", None)
+                step["type"] = "sweep"
+                step["start_frequency"] = tone
+                step["end_frequency"] = tone
+            step[field] = value
         else:
             step["volume"] = round(self.clamp(1 - (event.y - 30) / max(1, height - 58), 0, 1), 2)
         self.load_inspector()
@@ -867,7 +878,14 @@ class EffectEditorDialog(tk.Toplevel):
         else:
             value = round(self.clamp(1 - (event.y - 30) / max(1, height - 58), 0, 1), 2)
         for point in points:
-            self.steps[point["index"]][point["field"]] = value
+            step = self.steps[point["index"]]
+            if lane == "frequency" and step.get("type") == "sine":
+                tone = float(step.get("frequency", 40))
+                step.pop("frequency", None)
+                step["type"] = "sweep"
+                step["start_frequency"] = tone
+                step["end_frequency"] = tone
+            step[point["field"]] = value
         self.load_inspector()
         self.draw_timeline()
 
@@ -880,8 +898,8 @@ class EffectEditorDialog(tk.Toplevel):
         self.duration_var.set(str(step.get("duration", 0.1)))
         self.start_frequency_var.set("" if step_type == "wait" else str(
             step.get("start_frequency", step.get("frequency", 40))))
-        self.end_frequency_var.set("" if step_type != "sweep" else str(
-            step.get("end_frequency", 40)))
+        self.end_frequency_var.set("" if step_type == "wait" else str(
+            step.get("end_frequency", step.get("frequency", 40))))
         self.volume_var.set("" if step_type == "wait" else str(step.get("volume", 1.0)))
 
     def apply_inspector(self):
@@ -893,10 +911,11 @@ class EffectEditorDialog(tk.Toplevel):
             else:
                 start = self.clamp(float(self.start_frequency_var.get()), 20, 120)
                 volume = self.clamp(float(self.volume_var.get()), 0, 1)
-                if step_type == "sweep":
+                end_text = self.end_frequency_var.get().strip()
+                end = self.clamp(float(end_text), 20, 120) if end_text else start
+                if step_type == "sweep" or abs(end - start) >= 0.05:
                     step = {"type": "sweep", "start_frequency": round(start, 1),
-                            "end_frequency": round(self.clamp(
-                                float(self.end_frequency_var.get()), 20, 120), 1),
+                            "end_frequency": round(end, 1),
                             "duration": duration, "volume": round(volume, 2)}
                 else:
                     step = {"type": "sine", "frequency": round(start, 1),
