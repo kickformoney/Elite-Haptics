@@ -114,7 +114,24 @@ def migrate_configuration_files(old_directory, new_directory):
             raise ValueError(f"{filename} is not valid JSON: {exc}") from exc
         if not isinstance(value, dict):
             raise ValueError(f"{filename} must contain a JSON object")
-        sources.append((filename, source, os.path.join(new_directory, filename)))
+        if filename == "haptics_config.json":
+            expected = (("custom_bindings", list), ("builtin_overrides", dict),
+                        ("test_pad_modes", dict))
+            for field, value_type in expected:
+                if field in value and not isinstance(value[field], value_type):
+                    raise ValueError(f"{filename} has an invalid '{field}' value")
+        elif filename == "effects.json":
+            if not isinstance(value.get("effects"), dict):
+                raise ValueError(f"{filename} must contain an 'effects' object")
+        elif filename == "triggers.json":
+            if (not isinstance(value.get("journal_events"), dict)
+                    or not isinstance(value.get("triggers"), dict)
+                    or not isinstance(value.get("status_flags"), list)
+                    or not all(isinstance(item, dict) for item in value["status_flags"])
+                    or not value["triggers"]):
+                raise ValueError(
+                    f"{filename} must contain Journal events, triggers, and status flags")
+        sources.append((filename, value, os.path.join(new_directory, filename)))
     if not sources:
         expected = ", ".join(USER_CONFIGURATION_FILES)
         raise ValueError(f"No configuration files were found.  Expected: {expected}")
@@ -124,11 +141,41 @@ def migrate_configuration_files(old_directory, new_directory):
     backups = []
     installed = []
     try:
-        for filename, source, destination in sources:
+        for filename, value, destination in sources:
+            if filename == "triggers.json" and os.path.isfile(destination):
+                try:
+                    with open(destination, "r", encoding="utf-8") as file:
+                        current = json.load(file)
+                except (OSError, json.JSONDecodeError):
+                    current = {}
+                if (isinstance(current.get("journal_events"), dict)
+                        and isinstance(current.get("triggers"), dict)
+                        and isinstance(current.get("status_flags"), list)):
+                    merged = dict(current)
+                    for field in ("journal_events", "triggers"):
+                        merged[field] = dict(current[field])
+                        merged[field].update(value[field])
+                    flag_positions = {
+                        (item.get("field", "Flags"), item.get("bit")): index
+                        for index, item in enumerate(current["status_flags"])
+                        if isinstance(item, dict)
+                    }
+                    merged_flags = list(current["status_flags"])
+                    for item in value["status_flags"]:
+                        key = (item.get("field", "Flags"), item.get("bit"))
+                        if key in flag_positions:
+                            merged_flags[flag_positions[key]] = item
+                        else:
+                            flag_positions[key] = len(merged_flags)
+                            merged_flags.append(item)
+                    merged["status_flags"] = merged_flags
+                    value = merged
             temporary = destination + ".migration-tmp"
-            shutil.copy2(source, temporary)
+            with open(temporary, "w", encoding="utf-8") as file:
+                json.dump(value, file, indent=2)
+                file.write("\n")
             staged.append(temporary)
-        for filename, _source, destination in sources:
+        for filename, _value, destination in sources:
             backup = None
             if os.path.exists(destination):
                 backup = f"{destination}.migration-backup-{timestamp}"
@@ -153,7 +200,7 @@ def migrate_configuration_files(old_directory, new_directory):
                 os.remove(temporary)
             except OSError:
                 pass
-    return [filename for filename, _source, _destination in sources], [
+    return [filename for filename, _value, _destination in sources], [
         backup for _destination, backup in backups]
 
 
