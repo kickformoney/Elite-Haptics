@@ -1821,14 +1821,15 @@ class App(tk.Tk):
                 os.path.abspath(os.path.normpath(new_var.get().strip())) ==
                 os.path.abspath(os.path.dirname(engine.CONFIG_PATH)))
             if migrated_current_install:
-                message += "\n\nElite Haptics will now close so the migrated configuration is preserved"
+                message += ("\n\nElite Haptics will now close and restart with the migrated "
+                            "configuration")
             else:
                 message += ("\n\nClose and reopen the new installation to load the migrated "
                             "configuration")
             messagebox.showinfo("Configuration migrated", message, parent=dialog)
             dialog.destroy()
             if migrated_current_install:
-                self.close(preserve_migrated_config=True)
+                self.close(preserve_migrated_config=True, restart=True)
 
         old_var.trace_add("write", refresh_status)
         ttk.Button(actions, text="Cancel", command=dialog.destroy).pack(side="left")
@@ -3111,7 +3112,7 @@ class App(tk.Tk):
             engine.WINDOW_GEOMETRY = self.geometry()
             engine.save_config()
 
-    def close(self, preserve_migrated_config=False):
+    def close(self, preserve_migrated_config=False, restart=False):
         engine.remove_monitor_listener(self.monitor_queue.put)
         if self._geometry_save_job is not None:
             self.after_cancel(self._geometry_save_job)
@@ -3121,6 +3122,20 @@ class App(tk.Tk):
                 engine.WINDOW_GEOMETRY = self.geometry()
             engine.save_config()
         self.runtime.stop()
+        if restart:
+            if getattr(sys, "frozen", False):
+                command = [sys.executable]
+                working_directory = os.path.dirname(sys.executable)
+            else:
+                command = [sys.executable, os.path.abspath(__file__)]
+                working_directory = HERE
+            try:
+                subprocess.Popen(command, cwd=working_directory, close_fds=True)
+            except OSError as exc:
+                messagebox.showwarning(
+                    "Could not restart Elite Haptics",
+                    f"The configuration was migrated, but the app could not restart: {exc}",
+                    parent=self)
         self.destroy()
 
 
