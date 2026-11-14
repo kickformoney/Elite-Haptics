@@ -20,6 +20,7 @@ $projectRoot = $PSScriptRoot
 $releaseDirectory = Join-Path $projectRoot 'releases'
 $stagingDirectory = Join-Path $releaseDirectory $packageName
 $archivePath = Join-Path $releaseDirectory "$packageName.zip"
+$migrationManifestPath = Join-Path $projectRoot 'effect_migrations.json'
 
 function Invoke-CheckedCommand {
     param(
@@ -38,6 +39,25 @@ function Invoke-CheckedCommand {
 Push-Location $projectRoot
 try {
     Invoke-CheckedCommand git 'rev-parse' '--is-inside-work-tree'
+
+    $currentVersion = 'unknown'
+    if (Test-Path -LiteralPath $migrationManifestPath -PathType Leaf) {
+        try {
+            $migrationManifest = Get-Content -LiteralPath $migrationManifestPath -Raw | ConvertFrom-Json
+            if ($migrationManifest.catalog_version) {
+                $currentVersion = "v$($migrationManifest.catalog_version.ToString().TrimStart('v'))"
+            }
+        }
+        catch {
+            Write-Warning "Could not read the current version from effect_migrations.json: $($_.Exception.Message)"
+        }
+    }
+
+    Write-Host ''
+    Write-Host "Current version: $currentVersion" -ForegroundColor Green
+    Write-Host '  Recorded in effect_migrations.json as catalog_version.' -ForegroundColor DarkGray
+    Write-Host "Requested release: $tag" -ForegroundColor Cyan
+    Write-Host ''
 
     # The normal build generates both changelog.json and the normalized
     # GitHub release notes before the repository cleanliness check.
