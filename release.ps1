@@ -15,6 +15,7 @@ Set-StrictMode -Version Latest
 
 $projectRoot = $PSScriptRoot
 $migrationManifestPath = Join-Path $projectRoot 'effect_migrations.json'
+$versionPattern = '^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$'
 $currentVersion = 'unknown'
 $currentVersionNumber = $null
 $usingManifestVersion = $false
@@ -33,11 +34,44 @@ if (Test-Path -LiteralPath $migrationManifestPath -PathType Leaf) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    if (-not $currentVersionNumber) {
-        throw 'No version was supplied and effect_migrations.json does not contain a catalog_version.'
+    Write-Host ''
+    Write-Host "Current catalog version: $currentVersion" -ForegroundColor Green
+
+    if ($Yes) {
+        if (-not $currentVersionNumber) {
+            throw 'No version was supplied and effect_migrations.json does not contain a catalog_version.'
+        }
+        $Version = $currentVersionNumber
+        $usingManifestVersion = $true
     }
-    $Version = $currentVersionNumber
-    $usingManifestVersion = $true
+    else {
+        while ($true) {
+            $prompt = if ($currentVersionNumber) {
+                "Enter release version (press Enter to use $currentVersion)"
+            } else {
+                'Enter release version (e.g., 1.2.0)'
+            }
+
+            $userInput = (Read-Host $prompt).Trim()
+
+            if ([string]::IsNullOrWhiteSpace($userInput)) {
+                if ($currentVersionNumber) {
+                    $Version = $currentVersionNumber
+                    $usingManifestVersion = $true
+                    break
+                }
+                Write-Warning 'A version number is required because effect_migrations.json has no catalog_version.'
+                continue
+            }
+
+            if ($userInput -match $versionPattern) {
+                $Version = $userInput
+                break
+            }
+
+            Write-Warning "Invalid version format '$userInput'. Expected format like 1.2.0 or v1.2.0-beta.1."
+        }
+    }
 }
 
 $versionNumber = $Version.TrimStart('v')
