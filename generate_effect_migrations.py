@@ -6,7 +6,11 @@ import argparse
 import json
 import math
 import pathlib
+import re
 import subprocess
+import sys
+
+SEMVER_PATTERN = re.compile(r"^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
 
 
 def load_catalog(path=None, git_ref=None):
@@ -56,23 +60,96 @@ def compensation_factor(previous, current):
     return round(1.0 / ratios[0], 8)
 
 
+def latest_git_tag(parser: argparse.ArgumentParser) -> str:
+    result = subprocess.run(
+        ["git", "describe", "--tags", "--abbrev=0"], capture_output=True,
+        text=True, encoding="utf-8", check=False)
+    tag = result.stdout.strip()
+    if result.returncode != 0 or not tag:
+        parser.error("No previous release tag was found. Supply --previous-git-ref explicitly.")
+    return tag
+
+
+def migration_matches(item, version, effect_id, factor):
+    try:
+        existing_factor = float(item.get("strength_factor"))
+    except (TypeError, ValueError):
+        return False
+    return (
+        str(item.get("id", "")).startswith(f"{version}-")
+        and item.get("effect") == effect_id
+        and math.isclose(existing_factor, factor, rel_tol=1e-6, abs_tol=1e-9)
+    )
+
+
+def resolve_target_version(supplied_version: str | None, default_version: str | None, parser: argparse.ArgumentParser) -> str:
+    if supplied_version:
+        cleaned = supplied_version.strip().lstrip("v")
+        if not SEMVER_PATTERN.match(cleaned):
+            parser.error(f"Invalid --to-version '{supplied_version}'. Expected format like 1.0.1 or v1.0.1-beta.1.")
+        return cleaned
+
+    if not sys.stdin.isatty():
+        parser.error("--to-version is required when running in non-interactive mode.")
+
+    if default_version:
+        print(f"Current catalog_version in manifest: v{default_version}")
+
+    while True:
+        prompt = (
+            f"Enter target version (press Enter to use {default_version}): "
+            if default_version
+            else "Enter target version (e.g., 1.0.1): "
+        )
+        entered = input(prompt).strip()
+
+        if not entered:
+            if default_version:
+                return default_version
+            print("Version cannot be empty.", file=sys.stderr)
+            continue
+
+        if not SEMVER_PATTERN.match(entered):
+            print(
+                f"Invalid version '{entered}'. Expected format like 1.0.1 or v1.0.1-beta.1.",
+                file=sys.stderr,
+            )
+            continue
+
+        return entered.lstrip("v")
+
+
 def main():
     parser = argparse.ArgumentParser()
-    previous = parser.add_mutually_exclusive_group(required=True)
+    previous = parser.add_mutually_exclusive_group()
     previous.add_argument("--previous")
     previous.add_argument("--previous-git-ref")
     parser.add_argument("--current", default="effects.default.json")
-    parser.add_argument("--to-version", required=True)
+    parser.add_argument("--to-version", required=False,
+                        help="Target catalog version (prompts interactively if omitted).")
     parser.add_argument("--output", default="effect_migrations.json")
     parser.add_argument("--check", action="store_true",
                         help="Fail if automatic migrations or the catalog version are missing.")
     args = parser.parse_args()
 
-    old = load_catalog(args.previous, args.previous_git_ref).get("effects", {})
-    new = load_catalog(args.current).get("effects", {})
+    if not args.previous and not args.previous_git_ref:
+        args.previous_git_ref = latest_git_tag(parser)
+        print(f"Using previous release tag: {args.previous_git_ref}")
+
     output_path = pathlib.Path(args.output)
     manifest = (json.loads(output_path.read_text(encoding="utf-8"))
                 if output_path.exists() else {"schema_version": 1, "migrations": []})
+
+    raw_current_version = manifest.get("catalog_version")
+    current_manifest_version = (
+        str(raw_current_version).strip().lstrip("v")
+        if raw_current_version
+        else None
+    )
+    args.to_version = resolve_target_version(args.to_version, current_manifest_version, parser)
+
+    old = load_catalog(args.previous, args.previous_git_ref).get("effects", {})
+    new = load_catalog(args.current).get("effects", {})
     existing_migrations = manifest.get("migrations", [])
     existing_ids = {item["id"] for item in existing_migrations}
     added = []
@@ -82,16 +159,8 @@ def main():
             continue
         migration_id = f"{args.to_version}-{effect_id}-strength"
         already_prepared = migration_id in existing_ids or any(
-            str(item.get("id", "")).startswith(f"{args.to_version}-")
-            and item.get("effect") == effect_id
-            and math.isclose(
-                float(item.get("strength_factor", 0)),
-                factor,
-                rel_tol=1e-6,
-                abs_tol=1e-9,
-            )
-            for item in existing_migrations
-        )
+            migration_matches(item, args.to_version, effect_id, factor)
+            for item in existing_migrations)
 
         if not already_prepared:
             added.append({
@@ -118,7 +187,7 @@ def main():
     manifest["catalog_version"] = args.to_version
     manifest.setdefault("migrations", []).extend(added)
     output_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    print(f"Added {len(added)} automatic strength migration(s).")
+    print(f"Added {len(added)} automatic strength migration(s) for version {args.to_version}.")
 
 
 if __name__ == "__main__":
