@@ -13,11 +13,11 @@ Double-click an existing row to edit it.  The context menu can enable or disable
 
 The same trigger can have more than one effect assigned to it.  Built-in mappings and custom mappings are displayed together, with their current enabled state
 
-## Create a trigger from a Journal event
+## Create a new trigger from a Journal event
 
 You can create a new trigger directly from an event name found in the journal file.  Find the value of the `event` property and type it exactly as shown, including capitalization
 
-For example, a Journal file may contain an entry like this:
+For example, the journal file may contain an entry for docking clearance granted:
 
 ```json
 {
@@ -28,17 +28,17 @@ For example, a Journal file may contain an entry like this:
 }
 ```
 
-To make an effect play whenever Elite Dangerous records that event:
+To add a haptic effect whenever that event shows up in the journal:
 
 1.  Open the **Effects** tab
-2.  Click in the **Trigger** box and type `DockingGranted`
-3.  Select the effect you want to play
+2.  Click the **Trigger** box and type `DockingGranted`
+3.  Select the effect you wish to play when docking clearance is granted
 4.  Set the mapping strength
-5.  Select **Add binding**
+5.  Click **Add binding**
 
-The new custom mapping appears in the list immediately.  The assigned effect will play the next time a station grants docking clearance
+The new custom mapping will appear in the list, and the assigned effect will play the next time a station grants docking clearance
 
-This direct method works for ordinary Journal events that are not already renamed by `triggers.json`.  If an event already appears in the Trigger list, select its friendly name instead of typing the raw Journal event
+This direct method works for ordinary journal events that are not already renamed by `triggers.json`.  If an event already appears in the Trigger list, select its existing entry, instead of adding the raw journal event
 
 ## Test a mapping
 
@@ -122,4 +122,4 @@ Ordinary Journal and Status triggers do not require Python changes
 
 Select **Settings > Migrate configuration** to copy your settings, mappings, custom effects, and customized trigger catalog from an old install directory to a new one
 
-The migration validates all source files first and creates timestamped backups of configuration files that already exist in the new directory.  Close and reopen the new installation afterward so it loads the migrated configuration
+The migration validates all source files and creates timestamped backups of configuration files that already exist in the new directory

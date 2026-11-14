@@ -43,7 +43,7 @@
     },
     {
       "type": "heading2",
-      "text": "Create a trigger from a Journal event"
+      "text": "Create a new trigger from a Journal event"
     },
     {
       "type": "paragraph",
@@ -51,7 +51,7 @@
     },
     {
       "type": "paragraph",
-      "text": "For example, a Journal file may contain an entry like this:"
+      "text": "For example, the journal file may contain an entry for docking access granted:"
     },
     {
       "type": "code",
@@ -60,7 +60,7 @@
     },
     {
       "type": "paragraph",
-      "text": "To make an effect play whenever Elite Dangerous records that event:"
+      "text": "To add a haptic effect whenever that event shows up in the journal:"
     },
     {
       "type": "numbered",
@@ -70,12 +70,12 @@
     {
       "type": "numbered",
       "number": 2,
-      "text": "Click in the **Trigger** box and type `DockingGranted`"
+      "text": "Click the **Trigger** box and type `DockingGranted`"
     },
     {
       "type": "numbered",
       "number": 3,
-      "text": "Select the effect you want to play"
+      "text": "Select the effect you wish to play when docking access is granted"
     },
     {
       "type": "numbered",
@@ -85,15 +85,15 @@
     {
       "type": "numbered",
       "number": 5,
-      "text": "Select **Add binding**"
+      "text": "Click **Add binding**"
     },
     {
       "type": "paragraph",
-      "text": "The new custom mapping appears in the list immediately.  The assigned effect will play the next time a station grants docking clearance"
+      "text": "The new custom mapping will appear in the list, and the assigned effect will play the next time a station grants docking clearance"
     },
     {
       "type": "paragraph",
-      "text": "This direct method works for ordinary Journal events that are not already renamed by `triggers.json`.  If an event already appears in the Trigger list, select its friendly name instead of typing the raw Journal event"
+      "text": "This direct method works for ordinary journal events that are not already renamed by `triggers.json`.  If an event already appears in the Trigger list, select its existing entry, instead of adding the raw journal event"
     },
     {
       "type": "heading2",
@@ -237,7 +237,7 @@
     },
     {
       "type": "paragraph",
-      "text": "The migration validates all source files first and creates timestamped backups of configuration files that already exist in the new directory.  Close and reopen the new installation afterward so it loads the migrated configuration"
+      "text": "The migration validates all source files and creates timestamped backups of configuration files that already exist in the new directory"
     }
   ],
   "source": "TRIGGERS_GUIDE.md"

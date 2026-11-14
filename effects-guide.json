@@ -7,11 +7,11 @@
     },
     {
       "type": "paragraph",
-      "text": "Elite Haptics includes visual tools for creating, editing, testing, duplicating, renaming, and deleting effects. You normally do not need to edit JSON by hand."
+      "text": "Elite Haptics includes visual tools for creating, editing, testing, duplicating, renaming, and deleting effects.  Optionally, you can modify the JSON directly"
     },
     {
       "type": "note",
-      "text": "Start with a low master strength while designing an effect. Bass shakers can become unexpectedly powerful at some frequencies."
+      "text": "Start with a low master strength while designing an effect.  Bass shakers can become unexpectedly powerful at some frequencies"
     },
     {
       "type": "heading2",
@@ -20,31 +20,31 @@
     {
       "type": "numbered",
       "number": 1,
-      "text": "Open **Settings** and select **Record effect\u2026**."
+      "text": "Open **Settings** and select **Record effect**"
     },
     {
       "type": "numbered",
       "number": 2,
-      "text": "Enter a unique name. The Effect ID is generated from the name and can be changed later."
+      "text": "Enter a unique name.  The Effect ID is generated from the name, but can be changed later"
     },
     {
       "type": "numbered",
       "number": 3,
-      "text": "Select **Record**, then drag inside the pad. Left to right controls strength; bottom to top controls frequency."
+      "text": "Select **Record**, then click and drag inside the pad.  Left to right controls strength; bottom to top controls frequency"
     },
     {
       "type": "numbered",
       "number": 4,
-      "text": "Use **Pause**, **Preview**, **Stop**, **Clear**, and **Trim silence** as needed."
+      "text": "Use **Pause**, **Preview**, **Stop**, **Clear**, and **Trim silence** as needed"
     },
     {
       "type": "numbered",
       "number": 5,
-      "text": "Select **Save effect**. If the name already exists, the app asks you to choose another one."
+      "text": "Select **Save effect**.  If the name already exists, you will be asked to choose a different name"
     },
     {
       "type": "paragraph",
-      "text": "The recorder turns horizontal or diagonal movement into frequency sweeps. The reticle and readouts update while you drag, and preview uses the same strength calculation as the finished effect."
+      "text": "The recorder turns horizontal or diagonal movement into frequency sweeps.  The reticle and readouts update while you drag, and preview uses the same strength calculation as the finished effect"
     },
     {
       "type": "heading2",
@@ -52,43 +52,43 @@
     },
     {
       "type": "paragraph",
-      "text": "Open **Settings > Manage effects\u2026**, select one of your effects, and choose **Edit**."
+      "text": "Open **Settings > Manage effects**, select one of your effects, and choose **Edit**"
     },
     {
       "type": "paragraph",
-      "text": "The upper timeline controls frequency and the lower timeline controls strength. The shared playhead moves through both lanes during playback."
+      "text": "The upper timeline controls frequency and the lower timeline controls strength.  The shared playhead moves through both lanes during playback"
     },
     {
       "type": "bullet",
-      "text": "Select a section or point to edit its exact values."
+      "text": "Select a section or point to edit its exact values"
     },
     {
       "type": "bullet",
-      "text": "Drag points to reshape an effect."
+      "text": "Drag points to reshape an effect"
     },
     {
       "type": "bullet",
-      "text": "Click a lane to split a section at that time."
+      "text": "Select a lane and click **Split step** to split a section"
     },
     {
       "type": "bullet",
-      "text": "Merge sections when separate points are no longer useful."
+      "text": "You can also use **Merge next** to combine sections"
     },
     {
       "type": "bullet",
-      "text": "Turn on **Link nearby frequency points** to move frequency points that are visually close together. Strength remains independently adjustable in every section."
+      "text": "Enable **Link nearby frequency points** to move frequency points that are visually close together"
     },
     {
       "type": "bullet",
-      "text": "Use the playback controls to preview the effect while editing."
+      "text": "Use the playback controls to preview the effect while editing"
     },
     {
       "type": "bullet",
-      "text": "Select **Save effect** to keep the changes."
+      "text": "Select **Save effect** to keep the changes"
     },
     {
       "type": "paragraph",
-      "text": "The visual editor supports sequence effects made from sine, sweep, and wait steps. Effects using specialized generators or step types can still be edited as JSON."
+      "text": "The visual editor supports sequence effects made from sine, sweep, and wait steps.  Effects using specialized generators or step types can still be edited as JSON"
     },
     {
       "type": "heading2",
@@ -96,11 +96,11 @@
     },
     {
       "type": "paragraph",
-      "text": "Select **Edit JSON\u2026** in the visual editor to view the complete effect definition. Choose **Apply to timeline** to bring valid changes back into the visual editor, or **Save effect** to save the JSON directly."
+      "text": "Select **Edit JSON** in the visual editor to view the complete effect definition.  Choose **Apply to timeline** to bring valid changes back into the visual editor, or **Save effect** to save the JSON directly"
     },
     {
       "type": "paragraph",
-      "text": "Invalid JSON or unsupported values are explained without replacing the last valid version of the effect."
+      "text": "Invalid JSON or unsupported values are explained without replacing the last valid version of the effect"
     },
     {
       "type": "heading2",
@@ -108,31 +108,31 @@
     },
     {
       "type": "paragraph",
-      "text": "In **Settings > Manage effects\u2026**, you can:"
+      "text": "In **Settings > Manage effects**, you can:"
     },
     {
       "type": "bullet",
-      "text": "Preview an effect."
+      "text": "Preview an effect"
     },
     {
       "type": "bullet",
-      "text": "Edit its timeline, details, or JSON."
+      "text": "Edit its timeline, details, or JSON"
     },
     {
       "type": "bullet",
-      "text": "Duplicate it as a starting point for a new effect."
+      "text": "Duplicate it as a starting point for a new effect"
     },
     {
       "type": "bullet",
-      "text": "Change its Effect ID. Existing mappings and Test Pad assignments are updated to use the new ID."
+      "text": "Change its Effect ID.  Existing mappings and Test Pad assignments are updated to use the new ID"
     },
     {
       "type": "bullet",
-      "text": "Delete it after confirmation."
+      "text": "Delete an effect"
     },
     {
       "type": "paragraph",
-      "text": "The display name and Effect ID are different. Renaming the display name is safe. If an old ID no longer describes the effect, use **Change ID\u2026** instead of editing the catalog manually."
+      "text": "If an old ID no longer describes the effect, use **Change ID**, instead of editing the catalog manually"
     },
     {
       "type": "heading2",
@@ -140,27 +140,27 @@
     },
     {
       "type": "paragraph",
-      "text": "`effects.default.json` is the built-in catalog shipped to every user. `effects.json` contains update-safe user effects and overrides on this computer."
+      "text": "`effects.default.json` is the built-in catalog `effects.json` contains update-safe user effects and overrides in your environment"
+    },
+    {
+      "type": "note",
+      "text": "This file will need to be copied into the new environment when the application is updated"
     },
     {
       "type": "bullet",
-      "text": "Recording, duplicating, or editing an effect in the app saves it to `effects.json`."
+      "text": "Recording, duplicating, or editing an effect in the app saves it to `effects.json`"
     },
     {
       "type": "bullet",
-      "text": "A user effect with the same ID as a built-in effect replaces that built-in definition at runtime."
+      "text": "A user effect with the same ID as a built-in effect replaces that built-in definition at runtime"
     },
     {
       "type": "bullet",
-      "text": "Application updates replace `effects.default.json` but preserve `effects.json`."
-    },
-    {
-      "type": "bullet",
-      "text": "To make an effect a new default for every user, update `effects.default.json` as part of a release and prepare the matching effect migration."
+      "text": "Application updates replace `effects.default.json` but preserve `effects.json`"
     },
     {
       "type": "paragraph",
-      "text": "Use **Settings > Reload effects** after changing either catalog outside the app. If loading fails, the app keeps the previously loaded catalog and shows the validation error."
+      "text": "Use **Settings > Reload effects** after changing either catalog outside the app.  If loading fails, the app keeps the previously loaded catalog and shows the validation error"
     },
     {
       "type": "heading2",
@@ -168,7 +168,7 @@
     },
     {
       "type": "paragraph",
-      "text": "The easiest starting point is to duplicate a similar effect in the app, then select **Edit JSON\u2026**. A basic effect looks like this:"
+      "text": "The easiest starting point is to duplicate a similar effect in the app, then select **Edit JSON**.  A basic effect looks like this:"
     },
     {
       "type": "code",
@@ -177,7 +177,7 @@
     },
     {
       "type": "paragraph",
-      "text": "Keep catalog files as valid JSON: property names and text require double quotes, commas separate entries, and JSON does not support comments."
+      "text": "Catalog files must contain valid JSON: property names and text require double quotes, commas delimited entries.  JSON does not support comments"
     },
     {
       "type": "heading2",
@@ -185,31 +185,31 @@
     },
     {
       "type": "bullet",
-      "text": "`sine`: one frequency. Uses `frequency`, `duration`, `volume`, and optional `fade`."
+      "text": "`sine`: one frequency.  Uses `frequency`, `duration`, `volume`, and optional `fade`"
     },
     {
       "type": "bullet",
-      "text": "`sweep`: moves between frequencies. Uses `start_frequency`, `end_frequency`, `duration`, and `volume`."
+      "text": "`sweep`: moves between frequencies.  Uses `start_frequency`, `end_frequency`, `duration`, and `volume`"
     },
     {
       "type": "bullet",
-      "text": "`wait`: delays the next step. Uses `duration`."
+      "text": "`wait`: delays the next step.  Uses `duration`"
     },
     {
       "type": "bullet",
-      "text": "`layered`: simultaneous frequencies. Uses `frequencies`, `duration`, and `volume`."
+      "text": "`layered`: simultaneous frequencies.  Uses `frequencies`, `duration`, and `volume`"
     },
     {
       "type": "bullet",
-      "text": "`noise`: filtered noise. Uses `duration`, `volume`, and `lowpass_frequency`."
+      "text": "`noise`: filtered noise.  Uses `duration`, `volume`, and `lowpass_frequency`"
     },
     {
       "type": "bullet",
-      "text": "`random_pulse`: irregular impacts. Uses `frequency`, `count`, `pulse_duration`, `gap_duration`, and `volume`. Optional variance properties include `frequency_variance`, `duration_variance`, `gap_variance`, and `volume_variance`."
+      "text": "`random_pulse`: irregular impacts.  Uses `frequency`, `count`, `pulse_duration`, `gap_duration`, and `volume`.  Optional variance properties include `frequency_variance`, `duration_variance`, `gap_variance`, and `volume_variance`"
     },
     {
       "type": "paragraph",
-      "text": "For bass shakers, frequencies around 20\u201380 Hz are generally the most useful."
+      "text": "For bass shakers, frequencies around 20\u201380 Hz are generally the most useful"
     },
     {
       "type": "heading2",
@@ -226,15 +226,15 @@
     },
     {
       "type": "paragraph",
-      "text": "Reusable random values can be declared in `variables` and referenced with `$name`. Existing repair effects contain complete examples, including triangular distributions."
+      "text": "Reusable random values can be declared in `variables` and referenced with `$name`.  Existing repair effects contain complete examples, including triangular distributions"
     },
     {
       "type": "bullet",
-      "text": "`selectable: false` hides an internal helper effect from user-facing lists."
+      "text": "`selectable: false` hides an internal helper effect from user-facing lists"
     },
     {
       "type": "bullet",
-      "text": "`generator: \"atmospheric_rumble\"` creates the specialized Leave Body effects. Duplicate one of those recipes when making another atmospheric effect."
+      "text": "`generator: \"atmospheric_rumble\"` creates the specialized Leave Body effects.  Duplicate one of those recipes to use as a template creating another atmospheric effect"
     }
   ],
   "source": "EFFECTS_GUIDE.md"
