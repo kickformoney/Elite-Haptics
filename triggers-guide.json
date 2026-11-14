@@ -51,7 +51,7 @@
     },
     {
       "type": "paragraph",
-      "text": "For example, the journal file may contain an entry for docking access granted:"
+      "text": "For example, the journal file may contain an entry for docking clearance granted:"
     },
     {
       "type": "code",
@@ -75,7 +75,7 @@
     {
       "type": "numbered",
       "number": 3,
-      "text": "Select the effect you wish to play when docking access is granted"
+      "text": "Select the effect you wish to play when docking clearance is granted"
     },
     {
       "type": "numbered",
