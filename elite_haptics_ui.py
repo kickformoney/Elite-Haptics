@@ -1942,6 +1942,7 @@ class App(tk.Tk):
             value = str(block.get("text", ""))
             if block_type == "code":
                 text.insert("end", value.rstrip() + "\n", "code")
+                text.insert("end", "\n", "body")
             elif block_type in ("bullet", "nested_bullet"):
                 insert_inline(f"• {value}", "bullet")
                 text.insert("end", "\n")
