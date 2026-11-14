@@ -18,23 +18,23 @@
 - Split default effects from user effects
 - Any changes to the default effect intensity will update custom values accordingly
 - Added new carrier, ship, fighter, fuel, combat, travel, and on-foot haptic effects:
-###t Carrier
+ ### Carrier
     - Carrier Fuel Deposit
-###t Combat
+ ### Combat
     - Interdiction Attempt
-###t Fighter
+ ### Fighter
     - Fighter Launched
     - Fighter Docked
-###t Fuel
+ ### Fuel
     - Reservoir Replenished
-###t On Foot
+ ### On Foot
     - Player Low Oxygen/Low Health
     - Body temperature Very Hot/Very Cold
-###t Ship
+ ### Ship
     - Cargo Transferred
     - Limpet Launched
     - Repair Limpet - Repairs Completed
     - Ship Scanned
     - Synthesis Complete
-###t Travel
+ ### Travel
     - Glide Mode (includes preview in Test Pad tab)

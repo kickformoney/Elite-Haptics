@@ -27,9 +27,9 @@ def compile_markdown(markdown):
             blocks.append({"type": "indented_heading3", "text": line[5:].strip()})
         elif line.startswith("### "):
             flush_paragraph()
+            is_indented = indentation >= 1 or raw_line.startswith("\t")
             blocks.append({
-                "type": "indented_heading3" if indentation >= 2 or raw_line.startswith("\t")
-                else "heading3",
+                "type": "indented_heading3" if is_indented else "heading3",
                 "text": line[4:].strip(),
             })
         elif line.startswith("# "):
