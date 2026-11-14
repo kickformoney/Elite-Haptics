@@ -161,6 +161,7 @@ try {
         @{ Source = 'dist\changelog.json'; Destination = 'changelog.json' }
         @{ Source = 'dist\triggers.json'; Destination = 'triggers.json' }
         @{ Source = 'dist\EFFECTS_GUIDE.md'; Destination = 'EFFECTS_GUIDE.md' }
+        @{ Source = 'dist\effects-guide.json'; Destination = 'effects-guide.json' }
         @{ Source = 'dist\TRIGGERS_GUIDE.md'; Destination = 'TRIGGERS_GUIDE.md' }
         @{ Source = 'README.md'; Destination = 'README.md' }
         @{ Source = 'LICENSE'; Destination = 'LICENSE' }

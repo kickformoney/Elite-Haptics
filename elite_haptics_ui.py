@@ -51,6 +51,7 @@ assert spec and spec.loader
 spec.loader.exec_module(engine)
 
 EFFECTS_GUIDE_PATH = os.path.join(HERE, "EFFECTS_GUIDE.md")
+EFFECTS_GUIDE_CONFIG_PATH = os.path.join(HERE, "effects-guide.json")
 TRIGGERS_GUIDE_PATH = os.path.join(HERE, "TRIGGERS_GUIDE.md")
 APP_ICON_PATH = os.path.join(HERE, "elite-haptics.ico")
 CHANGELOG_CONFIG_PATH = os.path.join(HERE, "changelog.json")
@@ -1676,10 +1677,110 @@ class App(tk.Tk):
             messagebox.showwarning("Could not open built-in effects", str(exc))
 
     def open_effects_guide(self):
+        """Show the compiled effect guide in a themed, scrollable dialog."""
         try:
-            os.startfile(EFFECTS_GUIDE_PATH)
-        except (AttributeError, OSError) as exc:
-            messagebox.showwarning("Could not open authoring guide", str(exc))
+            with open(EFFECTS_GUIDE_CONFIG_PATH, "r", encoding="utf-8") as file:
+                guide = json.load(file)
+            blocks = guide.get("blocks")
+            if not isinstance(blocks, list):
+                raise ValueError("The compiled guide does not contain a block list.")
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            messagebox.showwarning("Could not open effect guide", str(exc), parent=self)
+            return
+
+        dialog = tk.Toplevel(self)
+        dialog.title("Elite Haptics effect guide")
+        dialog.transient(self)
+        dialog.geometry("900x700")
+        dialog.minsize(680, 480)
+        if os.path.exists(APP_ICON_PATH):
+            try:
+                dialog.iconbitmap(APP_ICON_PATH)
+            except tk.TclError:
+                pass
+
+        frame = ttk.Frame(dialog, padding=16)
+        frame.pack(fill="both", expand=True)
+        reader = ttk.Frame(frame)
+        reader.pack(fill="both", expand=True)
+        text = tk.Text(reader, wrap="word", relief="flat", borderwidth=0,
+                       padx=12, pady=10, cursor="arrow")
+        scrollbar = ttk.Scrollbar(reader, orient="vertical", command=text.yview)
+        text.configure(yscrollcommand=scrollbar.set)
+        text.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        palette = getattr(self, "palette", {})
+        foreground = palette.get("foreground", "#20272C")
+        text.configure(background=palette.get("field", "#FFFFFF"),
+                       foreground=foreground,
+                       selectbackground=palette.get("select", "#DCEAF7"),
+                       font=("Segoe UI", 10))
+        text.tag_configure("h1", font=("Segoe UI Semibold", 16),
+                           foreground=palette.get("accent", "#3478B8"), spacing3=12)
+        text.tag_configure("h2", font=("Segoe UI Semibold", 12),
+                           foreground=palette.get("accent", "#3478B8"),
+                           spacing1=14, spacing3=5)
+        text.tag_configure("h3", font=("Segoe UI Semibold", 10),
+                           foreground=foreground, spacing1=8, spacing3=4)
+        text.tag_configure("body", font=("Segoe UI", 10), spacing3=8)
+        text.tag_configure("bullet", font=("Segoe UI", 10),
+                           lmargin1=16, lmargin2=32, spacing3=5)
+        text.tag_configure("numbered", font=("Segoe UI", 10),
+                           lmargin1=16, lmargin2=36, spacing3=5)
+        text.tag_configure("note", font=("Segoe UI", 9),
+                           foreground=palette.get("muted", "#647583"),
+                           lmargin1=16, lmargin2=16, spacing1=8, spacing3=10)
+        text.tag_configure("code", font=("Consolas", 9),
+                           background=palette.get("background", "#F3F5F7"),
+                           foreground=foreground, lmargin1=18, lmargin2=18,
+                           rmargin=18, spacing1=6, spacing3=10)
+        text.tag_configure("strong", font=("Segoe UI Semibold", 10))
+        text.tag_configure("inline_code", font=("Consolas", 9),
+                           foreground=palette.get("accent", "#3478B8"))
+
+        def insert_inline(value, base_tag):
+            parts = re.split(r"(\*\*.*?\*\*|`.*?`)", value)
+            for part in parts:
+                if part.startswith("**") and part.endswith("**"):
+                    text.insert("end", part[2:-2], (base_tag, "strong"))
+                elif part.startswith("`") and part.endswith("`"):
+                    text.insert("end", part[1:-1], (base_tag, "inline_code"))
+                else:
+                    text.insert("end", part, base_tag)
+
+        tags = {"heading1": "h1", "heading2": "h2", "heading3": "h3",
+                "indented_heading3": "h3", "paragraph": "body",
+                "indented_text": "body", "note": "note"}
+        for block in blocks:
+            block_type = block.get("type")
+            value = str(block.get("text", ""))
+            if block_type == "code":
+                text.insert("end", value.rstrip() + "\n", "code")
+            elif block_type in ("bullet", "nested_bullet"):
+                insert_inline(f"• {value}", "bullet")
+                text.insert("end", "\n")
+            elif block_type == "numbered":
+                insert_inline(f"{block.get('number', '')}. {value}", "numbered")
+                text.insert("end", "\n")
+            else:
+                insert_inline(value, tags.get(block_type, "body"))
+                text.insert("end", "\n")
+        text.configure(state="disabled")
+
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill="x", pady=(12, 0))
+
+        def open_markdown():
+            try:
+                os.startfile(EFFECTS_GUIDE_PATH)
+            except (AttributeError, OSError) as exc:
+                messagebox.showwarning("Could not open Markdown guide", str(exc), parent=dialog)
+
+        ttk.Button(buttons, text="Open Markdown", command=open_markdown).pack(side="left")
+        ttk.Button(buttons, text="Close", command=dialog.destroy).pack(side="right")
+        self.bind_dialog_shortcuts(dialog, dialog.destroy, dialog.destroy)
+        self.center_dialog(dialog)
 
     def open_triggers_file(self):
         try:

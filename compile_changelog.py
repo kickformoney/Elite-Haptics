@@ -5,11 +5,15 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import re
 
 
 def compile_markdown(markdown):
     blocks = []
     paragraph = []
+    code_lines = []
+    code_language = ""
+    in_code_block = False
 
     def flush_paragraph():
         if paragraph:
@@ -19,6 +23,24 @@ def compile_markdown(markdown):
     for raw_line in markdown.splitlines():
         line = raw_line.strip()
         indentation = len(raw_line) - len(raw_line.lstrip(" "))
+        if line.startswith("```"):
+            flush_paragraph()
+            if in_code_block:
+                blocks.append({
+                    "type": "code",
+                    "text": "\n".join(code_lines),
+                    "language": code_language,
+                })
+                code_lines.clear()
+                code_language = ""
+                in_code_block = False
+            else:
+                code_language = line[3:].strip()
+                in_code_block = True
+            continue
+        if in_code_block:
+            code_lines.append(raw_line)
+            continue
         if not line:
             flush_paragraph()
             continue
@@ -47,6 +69,11 @@ def compile_markdown(markdown):
                 "type": "nested_bullet" if indentation else "bullet",
                 "text": line[2:].strip(),
             })
+        elif re.match(r"^\d+\.\s+", line):
+            flush_paragraph()
+            number, value = line.split(".", 1)
+            blocks.append({"type": "numbered", "number": int(number),
+                           "text": value.strip()})
         elif line.startswith("{{") and line.endswith("}}"):
             flush_paragraph()
             blocks.append({"type": "placeholder", "name": line[2:-2].strip()})
@@ -56,6 +83,12 @@ def compile_markdown(markdown):
         else:
             paragraph.append(line)
     flush_paragraph()
+    if in_code_block:
+        blocks.append({
+            "type": "code",
+            "text": "\n".join(code_lines),
+            "language": code_language,
+        })
     return {"schema_version": 1, "blocks": blocks}
 
 

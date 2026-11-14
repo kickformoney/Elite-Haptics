@@ -9,6 +9,7 @@ a = Analysis(
            ('effect_migrations.json', '.'), ('changelog.json', '.'),
            ('CHANGELOG.md', '.'), ('triggers.json', '.'),
            ('default_config.json', '.'), ('EFFECTS_GUIDE.md', '.'),
+           ('effects-guide.json', '.'),
            ('TRIGGERS_GUIDE.md', '.'), ('elite-haptics.ico', '.')],
     hiddenimports=['numpy', 'sounddevice', 'watchdog.observers', 'watchdog.events'],
     hookspath=[],
