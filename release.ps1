@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory, Position = 0)]
+    [Parameter(Position = 0)]
     [ValidatePattern('^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$')]
     [string]$Version,
 
@@ -13,14 +13,39 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+$projectRoot = $PSScriptRoot
+$migrationManifestPath = Join-Path $projectRoot 'effect_migrations.json'
+$currentVersion = 'unknown'
+$currentVersionNumber = $null
+$usingManifestVersion = $false
+
+if (Test-Path -LiteralPath $migrationManifestPath -PathType Leaf) {
+    try {
+        $migrationManifest = Get-Content -LiteralPath $migrationManifestPath -Raw | ConvertFrom-Json
+        if ($migrationManifest.catalog_version) {
+            $currentVersionNumber = $migrationManifest.catalog_version.ToString().TrimStart('v')
+            $currentVersion = "v$currentVersionNumber"
+        }
+    }
+    catch {
+        Write-Warning "Could not read the current version from effect_migrations.json: $($_.Exception.Message)"
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    if (-not $currentVersionNumber) {
+        throw 'No version was supplied and effect_migrations.json does not contain a catalog_version.'
+    }
+    $Version = $currentVersionNumber
+    $usingManifestVersion = $true
+}
+
 $versionNumber = $Version.TrimStart('v')
 $tag = "v$versionNumber"
 $packageName = "Elite-Haptics-$tag"
-$projectRoot = $PSScriptRoot
 $releaseDirectory = Join-Path $projectRoot 'releases'
 $stagingDirectory = Join-Path $releaseDirectory $packageName
 $archivePath = Join-Path $releaseDirectory "$packageName.zip"
-$migrationManifestPath = Join-Path $projectRoot 'effect_migrations.json'
 
 function Invoke-CheckedCommand {
     param(
@@ -40,22 +65,12 @@ Push-Location $projectRoot
 try {
     Invoke-CheckedCommand git 'rev-parse' '--is-inside-work-tree'
 
-    $currentVersion = 'unknown'
-    if (Test-Path -LiteralPath $migrationManifestPath -PathType Leaf) {
-        try {
-            $migrationManifest = Get-Content -LiteralPath $migrationManifestPath -Raw | ConvertFrom-Json
-            if ($migrationManifest.catalog_version) {
-                $currentVersion = "v$($migrationManifest.catalog_version.ToString().TrimStart('v'))"
-            }
-        }
-        catch {
-            Write-Warning "Could not read the current version from effect_migrations.json: $($_.Exception.Message)"
-        }
-    }
-
     Write-Host ''
     Write-Host "Current version: $currentVersion" -ForegroundColor Green
     Write-Host '  Recorded in effect_migrations.json as catalog_version.' -ForegroundColor DarkGray
+    if ($usingManifestVersion) {
+        Write-Host '  No version supplied; using the recorded catalog version.' -ForegroundColor Yellow
+    }
     Write-Host "Requested release: $tag" -ForegroundColor Cyan
     Write-Host ''
 
