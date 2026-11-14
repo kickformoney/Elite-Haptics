@@ -3177,14 +3177,22 @@ class App(tk.Tk):
             engine.save_config()
         self.runtime.stop()
         if restart:
+            restart_environment = None
             if getattr(sys, "frozen", False):
                 command = [sys.executable]
                 working_directory = os.path.dirname(sys.executable)
+                # A one-file PyInstaller executable normally treats another
+                # copy of itself as a child and reuses the current _MEI folder.
+                # A restarted app must unpack independently so the exiting
+                # process can safely remove its own temporary files.
+                restart_environment = os.environ.copy()
+                restart_environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
             else:
                 command = [sys.executable, os.path.abspath(__file__)]
                 working_directory = HERE
             try:
-                subprocess.Popen(command, cwd=working_directory, close_fds=True)
+                subprocess.Popen(command, cwd=working_directory, close_fds=True,
+                                 env=restart_environment)
             except OSError as exc:
                 messagebox.showwarning(
                     "Could not restart Elite Haptics",
