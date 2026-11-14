@@ -108,6 +108,37 @@ try {
     Write-Host "Requested release: $tag" -ForegroundColor Cyan
     Write-Host ''
 
+    $previousTag = @(git describe --tags --abbrev=0)
+    if ($LASTEXITCODE -ne 0 -or $previousTag.Count -ne 1) {
+        throw 'Unable to determine the previous release tag for effect migration checks.'
+    }
+    $migrationArguments = @(
+        'generate_effect_migrations.py',
+        '--previous-git-ref', $previousTag[0],
+        '--current', 'effects.default.json',
+        '--to-version', $versionNumber,
+        '--output', 'effect_migrations.json'
+    )
+    & '.\.venv\Scripts\python.exe' @migrationArguments '--check'
+    if ($LASTEXITCODE -ne 0) {
+        $preparationChanges = @(git status --porcelain --untracked-files=all)
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to check the Git working tree before preparing effect migrations.'
+        }
+        if ($preparationChanges.Count -gt 0) {
+            throw ('Effect migrations need preparation, but the repository already has ' +
+                   'uncommitted files. Commit or stash them, then rerun this command.')
+        }
+
+        Write-Host "Preparing effect migrations for $tag..." -ForegroundColor Yellow
+        Invoke-CheckedCommand '.\.venv\Scripts\python.exe' @migrationArguments
+        Write-Host ''
+        Write-Host 'effect_migrations.json was updated.' -ForegroundColor Green
+        Write-Host 'Review and commit it, then rerun release.ps1 to build the package.' `
+            -ForegroundColor Yellow
+        throw 'Release stopped after preparing effect migrations.'
+    }
+
     # The normal build generates both changelog.json and the normalized
     # GitHub release notes before the repository cleanliness check.
     Write-Host "Building Elite Haptics $tag..." -ForegroundColor Cyan
@@ -120,14 +151,6 @@ try {
     if ($uncommittedChanges.Count -gt 0) {
         throw 'The repository has uncommitted files. Commit or stash them before creating a release.'
     }
-
-    $previousTag = @(git describe --tags --abbrev=0)
-    if ($LASTEXITCODE -ne 0 -or $previousTag.Count -ne 1) {
-        throw 'Unable to determine the previous release tag for effect migration checks.'
-    }
-    Invoke-CheckedCommand '.\.venv\Scripts\python.exe' 'generate_effect_migrations.py' `
-        '--previous-git-ref' $previousTag[0] '--current' 'effects.default.json' `
-        '--to-version' $versionNumber '--output' 'effect_migrations.json' '--check'
 
     $packageFiles = @(
         @{ Source = 'dist\elite-haptics.exe'; Destination = 'elite-haptics.exe' }
