@@ -1937,18 +1937,24 @@ class App(tk.Tk):
         tags = {"heading1": "h1", "heading2": "h2", "heading3": "h3",
                 "indented_heading3": "h3", "paragraph": "body",
                 "indented_text": "body", "note": "note"}
-        for block in blocks:
+        list_types = {"bullet", "nested_bullet", "numbered"}
+        for index, block in enumerate(blocks):
             block_type = block.get("type")
             value = str(block.get("text", ""))
+            next_type = blocks[index + 1].get("type") if index + 1 < len(blocks) else None
             if block_type == "code":
                 text.insert("end", value.rstrip() + "\n", "code")
                 text.insert("end", "\n", "body")
             elif block_type in ("bullet", "nested_bullet"):
                 insert_inline(f"• {value}", "bullet")
                 text.insert("end", "\n")
+                if next_type not in list_types:
+                    text.insert("end", "\n", "body")
             elif block_type == "numbered":
                 insert_inline(f"{block.get('number', '')}. {value}", "numbered")
                 text.insert("end", "\n")
+                if next_type not in list_types:
+                    text.insert("end", "\n", "body")
             else:
                 insert_inline(value, tags.get(block_type, "body"))
                 text.insert("end", "\n")
