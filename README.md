@@ -6,10 +6,6 @@ Made to be complementary with apps like Voicemeeter or Simhub, Elite Haptics pro
 
 FSD charging, docking clamps, shield status, interdictions, landing gear, fuel scooping, station services, heat warnings, and other events each have their own custom effects, and using the built-in effect recorder, you can easily add your own custom haptic effects to the game
 
-Effects tab:
-<img width="1163" height="1014" alt="image" src="https://github.com/user-attachments/assets/592a47ce-65f6-4a40-8cef-dfd22bf3fd36" />
-
-
 ## Features
 
 - Editable telemetry-to-effect mappings
@@ -22,12 +18,6 @@ Effects tab:
 - Continuous feedback for events like fuel scooping and overheating
 - Selectable Windows audio output
 
-## How it works
-
-Elite Haptics watches the local Elite Dangerous player Journal and `Status.json` files. Supported events are translated into low-frequency audio waveforms and sent to the output device selected in Settings. That output can be routed to a tactile transducer directly, or through software such as VoiceMeeter
-
-The application does not modify the game in any way, inject code, read game memory, or transmit journal data over the internet
-
 ## Requirements
 
 - Windows 10 or Windows 11
@@ -36,6 +26,39 @@ The application does not modify the game in any way, inject code, read game memo
 - Elite Dangerous
 
 The application defaults to 25% strength.  Start with low amplifier and application levels. Increase them gradually to protect the transducer, amplifier, furniture, and listener
+
+## How it works
+
+Elite Haptics watches the local Elite Dangerous player Journal and `Status.json` files. Supported events are translated into low-frequency audio waveforms and sent to the output device selected in Settings. That output can be routed to a tactile transducer directly, or through software such as VoiceMeeter
+
+Effects tab:
+<img width="1163" height="1014" alt="image" src="https://github.com/user-attachments/assets/592a47ce-65f6-4a40-8cef-dfd22bf3fd36" />
+
+## Editing and adding effects
+
+### Using the Effect Recorder
+
+From the Settings tab, click Record Effect:
+1. Click Record to start
+2. Click and drag the mouse in the box - The vertical axis controls frequency, and the horizontal axis controls intensity
+3. To add a pause, release the mouse button and click again to resume
+4. Click Stop to finish the recording
+5. Optionally, trim leading/trailing silence
+
+<img width="879" height="684" alt="image" src="https://github.com/user-attachments/assets/c49a3de8-d7b4-4230-b983-4fc64a01ebd9" /><br/>
+
+Recorded effects can be edited after creation.  Click Manage Effects, select an effect, and click Edit Selected to modify the waveform and strength of each step:
+<img width="1112" height="805" alt="image" src="https://github.com/user-attachments/assets/37ebd809-6eca-4305-a6cc-faab7195c547" />
+
+### Modifying in JSON
+
+Built-in effects are stored in `effects.default.json`; update-safe user additions and overrides are stored in `effects.json`. In the application, use **Settings > Open effects.json**, save changes, then choose **Reload effects**. New selectable effects become available in the Test Pad and mapping controls. To customize a built-in effect, copy its entry from `effects.default.json` into `effects.json` and keep the same effect ID
+
+Release notes are authored in `CHANGELOG.md`. The build compiles the supported Markdown subset into `changelog.json`; the application then appends customized strength adjustments and backup details from the actual migration report automatically
+
+See Effects Guide in the Settings tab for the recipe format, supported waveform steps, random values, and an example effect
+
+Trigger names, categories, Journal event mappings, and supported Status flag transitions are stored in `triggers.json`. It can be opened and reloaded from Settings. See Trigger Guide in the Settings tab for examples and schema details. A future visual Trigger Manager is planned; special engine actions still require supported action types in the application code
 
 ## Running a release
 
@@ -94,38 +117,13 @@ To publish a preview release:
 
 For a normal release, omit `-Prerelease`
 
-## Editing and adding effects
-
-### Using the Effect Recorder
-
-From the Settings tab, click Record Effect:
-1. Click Record to start
-2. Click and drag the mouse in the box - The vertical axis controls frequency, and the horizontal axis controls intensity
-3. To add a pause, release the mouse button and click again to resume
-4. Click Stop to finish the recording
-5. Optionally, trim leading/trailing silence
-
-<img width="879" height="684" alt="image" src="https://github.com/user-attachments/assets/c49a3de8-d7b4-4230-b983-4fc64a01ebd9" /><br/>
-
-Recorded effects can be edited after creation.  Click Manage Effects, select an effect, and click Edit Selected to modify the waveform and strength of each step:
-<img width="1112" height="805" alt="image" src="https://github.com/user-attachments/assets/37ebd809-6eca-4305-a6cc-faab7195c547" />
-
-### Modifying in JSON
-
-Built-in effects are stored in `effects.default.json`; update-safe user additions and overrides are stored in `effects.json`. In the application, use **Settings > Open effects.json**, save changes, then choose **Reload effects**. New selectable effects become available in the Test Pad and mapping controls. To customize a built-in effect, copy its entry from `effects.default.json` into `effects.json` and keep the same effect ID
-
-Release notes are authored in `CHANGELOG.md`. The build compiles the supported Markdown subset into `changelog.json`; the application then appends customized strength adjustments and backup details from the actual migration report automatically
-
-See Effects Guide in the Settings tab for the recipe format, supported waveform steps, random values, and an example effect
-
-Trigger names, categories, Journal event mappings, and supported Status flag transitions are stored in `triggers.json`. It can be opened and reloaded from Settings. See Trigger Guide in the Settings tab for examples and schema details. A future visual Trigger Manager is planned; special engine actions still require supported action types in the application code
-
 ## Telemetry limitations
 
 Elite Dangerous does not journal every physical action. An effect can only trigger automatically when a suitable journal event is available. The Monitoring tab helps identify incoming events and distinguish them from effects dispatched by the application
 
-## Project status
+The application does not modify the game in any way, inject code, read game memory, or transmit journal data over the internet
 
+## Project status
 Elite Haptics is an early community release. Effect timing and intensity can vary considerably with the transducer, amplifier, mounting, crossover, and chair or cockpit construction. Feedback and additional effect recipes are welcome
 
 ## License
